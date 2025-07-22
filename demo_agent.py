@@ -1,5 +1,5 @@
 from langchain.agents import AgentType, initialize_agent
-from langchain.llms import OpenAI
+from langchain_community.llms import DeepSeek
 from langchain.tools import Tool
 
 
@@ -22,7 +22,7 @@ tools = [
 ]
 
 # 初始化LLM
-llm = OpenAI(temperature=0)
+llm = DeepSeek(api_key="your-deepseek-api-key", temperature=0)
 
 # 创建Agent
 agent = initialize_agent(
