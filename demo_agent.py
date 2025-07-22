@@ -1,6 +1,10 @@
 from langchain.agents import AgentType, initialize_agent
 from langchain_community.llms import DeepSeek
 from langchain.tools import Tool
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 
 # 定义一个简单的计算工具
@@ -22,7 +26,7 @@ tools = [
 ]
 
 # 初始化LLM
-llm = DeepSeek(api_key="your-deepseek-api-key", temperature=0)
+llm = DeepSeek(api_key=os.getenv("DEEPSEEK_API_KEY"), temperature=0)
 
 # 创建Agent
 agent = initialize_agent(
