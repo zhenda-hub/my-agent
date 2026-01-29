@@ -1,0 +1,169 @@
+"""LLM 管理器 - 使用 OpenRouter 统一管理多个 LLM"""
+import os
+from typing import Optional
+from openai import OpenAI
+from src.config import config
+
+
+class LLMManager:
+    """
+    使用 OpenRouter 统一管理多个 LLM
+
+    支持的模型格式: provider/model_name
+    例如: anthropic/claude-3-opus, openai/gpt-4, deepseek/deepseek-chat
+    """
+
+    # OpenRouter API 端点
+    BASE_URL = "https://openrouter.ai/api/v1"
+
+    # 常用模型映射
+    MODELS = {
+        "deepseek": "deepseek/deepseek-chat",
+        "deepseek-reasoner": "deepseek/deepseek-r1",
+        "gpt-4": "openai/gpt-4-turbo",
+        "gpt-3.5": "openai/gpt-3.5-turbo",
+        "claude-opus": "anthropic/claude-3-opus",
+        "claude-sonnet": "anthropic/claude-3-sonnet",
+        "gemini": "google/gemini-pro",
+        "llama": "meta-llama/llama-3-70b",
+    }
+
+    def __init__(
+        self,
+        api_key: str = None,
+        default_model: str = None,
+        temperature: float = 0.7,
+    ):
+        """
+        初始化 LLM 管理器
+
+        Args:
+            api_key: OpenRouter API Key，默认从环境变量 OPENROUTER_API_KEY 读取
+            default_model: 默认模型，可以是简写（如 "gpt-4"）或完整路径（如 "openai/gpt-4"）
+            temperature: 温度参数
+        """
+        self.api_key = api_key or os.getenv("OPENROUTER_API_KEY")
+        if not self.api_key:
+            raise ValueError("请设置 OPENROUTER_API_KEY 环境变量")
+
+        self.client = OpenAI(
+            base_url=self.BASE_URL,
+            api_key=self.api_key,
+        )
+
+        # 设置默认模型
+        if default_model:
+            self.default_model = self._resolve_model(default_model)
+        else:
+            # 从配置或环境变量获取
+            env_model = os.getenv("DEFAULT_LLM_MODEL", "deepseek")
+            self.default_model = self._resolve_model(env_model)
+
+        self.temperature = temperature
+
+    def _resolve_model(self, model: str) -> str:
+        """
+        解析模型名称
+
+        Args:
+            model: 模型名称（简写或完整路径）
+
+        Returns:
+            完整的模型路径
+        """
+        # 如果已经是完整路径（包含 /），直接返回
+        if "/" in model:
+            return model
+
+        # 否则从映射表查找
+        return self.MODELS.get(model, model)
+
+    def generate(
+        self,
+        prompt: str,
+        model: str = None,
+        temperature: float = None,
+    ) -> str:
+        """
+        生成回答
+
+        Args:
+            prompt: 提示词
+            model: 模型名称，默认使用 default_model
+            temperature: 温度参数，默认使用初始化时的值
+
+        Returns:
+            生成的文本
+        """
+        model = self._resolve_model(model) if model else self.default_model
+        temperature = temperature if temperature is not None else self.temperature
+
+        try:
+            response = self.client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=temperature,
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            raise RuntimeError(f"LLM 调用失败: {e}")
+
+    def chat(
+        self,
+        messages: list,
+        model: str = None,
+        temperature: float = None,
+    ) -> str:
+        """
+        多轮对话
+
+        Args:
+            messages: 消息列表 [{"role": "user", "content": "..."}, ...]
+            model: 模型名称
+            temperature: 温度参数
+
+        Returns:
+            生成的文本
+        """
+        model = self._resolve_model(model) if model else self.default_model
+        temperature = temperature if temperature is not None else self.temperature
+
+        try:
+            response = self.client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            raise RuntimeError(f"LLM 调用失败: {e}")
+
+    async def agenerate(
+        self,
+        prompt: str,
+        model: str = None,
+        temperature: float = None,
+    ) -> str:
+        """
+        异步生成回答
+
+        Args:
+            prompt: 提示词
+            model: 模型名称
+            temperature: 温度参数
+
+        Returns:
+            生成的文本
+        """
+        # OpenAI SDK 不直接支持异步，使用同步版本
+        # 如需真正的异步，可以使用 httpx 异步客户端
+        return self.generate(prompt, model, temperature)
+
+    def list_available_models(self) -> dict:
+        """
+        获取可用的模型列表
+
+        Returns:
+            模型映射字典
+        """
+        return self.MODELS.copy()

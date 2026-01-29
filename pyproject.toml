@@ -1,7 +1,7 @@
 [project]
-name = "my-agent"
+name = "book-rag"
 version = "0.1.0"
-description = "Enterprise RAG Knowledge Base QA Agent"
+description = "Book-focused RAG system with precise citation tracking"
 requires-python = ">=3.12"
 dependencies = [
     "langchain>=0.3.26",
@@ -17,10 +17,13 @@ dependencies = [
     "python-docx>=1.1.0",
     "beautifulsoup4>=4.12.0",
     "trafilatura>=1.12.0",
+    "ebooklib>=0.18",  # EPUB 支持
     # Web 框架
     "fastapi>=0.115.0",
     "uvicorn>=0.32.0",
     "python-multipart>=0.0.20",
+    # LLM (OpenRouter 使用 OpenAI SDK)
+    "openai>=1.12.0",
 ]
 
 [build-system]

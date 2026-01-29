@@ -13,8 +13,8 @@ from src.vector_store import get_vector_store
 
 
 app = FastAPI(
-    title="企业级知识库问答 API",
-    description="基于 RAG 的企业知识库问答系统",
+    title="Book RAG API",
+    description="Book-focused RAG system with precise citation tracking",
     version="1.0.0",
 )
 
@@ -31,9 +31,18 @@ class SourceInfo(BaseModel):
     metadata: dict
 
 
+class CitationInfo(BaseModel):
+    book_title: str
+    chapter_title: str
+    page_num: int
+    excerpt: str
+    confidence: float = 1.0
+
+
 class QueryResponse(BaseModel):
     answer: str
     sources: List[SourceInfo]
+    citations: List[CitationInfo]
 
 
 class HealthResponse(BaseModel):
@@ -77,7 +86,7 @@ async def query(request: QueryRequest):
         request: 查询请求
 
     Returns:
-        问答结果（包含答案和来源）
+        问答结果（包含答案、来源和引用）
     """
     try:
         if not request.query.strip():
@@ -100,9 +109,22 @@ async def query(request: QueryRequest):
             for src in result.sources
         ]
 
+        # 格式化引用
+        citations = [
+            CitationInfo(
+                book_title=cit.book_title,
+                chapter_title=cit.chapter_title,
+                page_num=cit.page_num,
+                excerpt=cit.excerpt,
+                confidence=cit.confidence,
+            )
+            for cit in result.citations
+        ]
+
         return QueryResponse(
             answer=result.answer,
             sources=sources,
+            citations=citations,
         )
 
     except Exception as e:
@@ -144,7 +166,7 @@ async def upload_document(
     """
     try:
         # 检查文件扩展名
-        allowed_extensions = {".pdf", ".docx", ".doc", ".md", ".markdown"}
+        allowed_extensions = {".pdf", ".docx", ".doc", ".md", ".markdown", ".epub"}
         file_ext = Path(file.filename).suffix.lower()
 
         if file_ext not in allowed_extensions:
