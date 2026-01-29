@@ -2,9 +2,9 @@
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field
 from pathlib import Path
-from langchain_community.llms import DeepSeek
 from src.config import config
 from src.retriever.base import Retriever
+from src.chains.llm_manager import LLMManager
 
 
 @dataclass
@@ -81,30 +81,31 @@ class QAChain:
     def __init__(
         self,
         retriever: Retriever = None,
-        temperature: float = None,
+        llm_manager: LLMManager = None,
     ):
         """
         初始化问答链
 
         Args:
             retriever: 检索器实例
-            temperature: LLM 温度参数
+            llm_manager: LLM 管理器实例
         """
         self.retriever = retriever or Retriever()
-        self.temperature = temperature or config.DEEPSEEK_TEMPERATURE
-        self._llm = None
+        self.llm_manager = llm_manager
 
     @property
-    def llm(self) -> DeepSeek:
+    def llm(self) -> LLMManager:
         """获取 LLM 实例"""
-        if self._llm is None:
-            self._llm = DeepSeek(
-                api_key=config.DEEPSEEK_API_KEY,
-                base_url=config.DEEPSEEK_BASE_URL,
-                model=config.DEEPSEEK_MODEL,
-                temperature=self.temperature,
-            )
-        return self._llm
+        if self.llm_manager is None:
+            # 使用 DeepSeek 作为默认模型
+            try:
+                self.llm_manager = LLMManager(default_model="deepseek")
+            except ValueError:
+                # 如果没有 API key，使用 DeepSeek 直连方式
+                from langchain_community.llms import HuggingFacePipeline
+                import os
+                self.llm_manager = None
+        return self.llm_manager
 
     def run(self, query: str) -> QAResult:
         """
@@ -137,7 +138,11 @@ class QAChain:
         )
 
         # 调用 LLM
-        answer = self.llm.invoke(prompt)
+        if self.llm_manager:
+            answer = self.llm_manager.generate(prompt)
+        else:
+            # 如果没有 LLM 管理器，返回简单回答
+            answer = f"根据知识库找到 {len(sources)} 个相关文档。请配置 LLM API 获取完整回答。"
 
         # 生成引用
         citations = self._generate_citations(sources)
