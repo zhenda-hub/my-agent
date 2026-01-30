@@ -4,10 +4,11 @@
 
 ## 功能特性
 
-- **多格式文档解析**：支持 PDF、Word、Markdown 格式
+- **多格式文档解析**：支持 PDF、Word、Markdown、EPUB 格式
 - **引用溯源**：显示答案参考来源，支持原文链接跳转
 - **语义检索**：基于 Chroma 向量数据库的语义搜索
-- **RESTful API**：FastAPI 提供的问答和文档上传接口
+- **Web 界面**：Gradio 提供的可视化问答界面
+- **多云 LLM**：通过 OpenRouter 支持多种模型（DeepSeek、GPT-4、Claude 等）
 
 ## 环境准备
 
@@ -18,20 +19,27 @@ uv sync
 source .venv/bin/activate
 ```
 
-## 配置
-
-复制 `.env_example` 为 `.env` 并配置：
-
-```bash
-# DeepSeek API
-DEEPSEEK_API_KEY=your-api-key-here
-
-# 其他配置使用默认值即可
-```
-
 ## 使用方法
 
-### 1. 摄入文档
+### 方式一：Web 界面（推荐）
+
+启动 Gradio Web 界面：
+
+```bash
+uv run python src/web/app.py
+```
+
+启动后访问 http://127.0.0.1:7861
+
+**使用步骤：**
+1. 输入 OpenRouter API Key
+2. 选择 LLM 模型
+3. 上传文档文件
+4. 开始问答
+
+### 方式二：命令行
+
+#### 1. 摄入文档
 
 将文档放入 `data/documents/` 目录，然后运行：
 
@@ -45,13 +53,13 @@ uv run python scripts/ingest.py --path data/documents/
 uv run python scripts/ingest.py --path data/documents/example.pdf
 ```
 
-### 2. 启动 API 服务
+#### 2. 启动 API 服务
 
 ```bash
 uv run python src/api/main.py
 ```
 
-### 3. 测试问答接口
+#### 3. 测试问答接口
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/query \
@@ -72,7 +80,7 @@ curl -X POST http://localhost:8000/api/v1/query \
 ## 项目结构
 
 ```
-my-agent/
+book-rag/
 ├── src/
 │   ├── config.py          # 配置管理
 │   ├── embeddings.py      # Embedding 封装
@@ -80,7 +88,8 @@ my-agent/
 │   ├── loaders/           # 文档加载器
 │   ├── retriever/         # 检索器
 │   ├── chains/            # 问答链
-│   └── api/               # API 服务
+│   ├── api/               # FastAPI 服务
+│   └── web/               # Gradio Web 界面
 ├── scripts/
 │   └── ingest.py          # 文档摄入脚本
 ├── data/
@@ -90,3 +99,12 @@ my-agent/
 ├── .env
 └── README.md
 ```
+
+## 支持的模型
+
+通过 OpenRouter 支持：
+- DeepSeek (deepseek, deepseek-reasoner)
+- OpenAI (gpt-4, gpt-3.5)
+- Anthropic (claude-opus, claude-sonnet)
+- Google (gemini)
+- Meta (llama)
