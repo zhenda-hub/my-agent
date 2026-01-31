@@ -13,7 +13,7 @@
 - [x] 实现 RAG 检索器 (retriever/base.py)
 - [x] 实现问答链 (chains/qa_chain.py)
 - [x] 支持引用溯源
-- [x] 实现 FastAPI 服务 (api/main.py)
+- [x] 实现 Gradio Web 界面 (web/app.py)
 
 ## 优化项
 
