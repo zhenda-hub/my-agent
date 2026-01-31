@@ -2,7 +2,6 @@
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field
 from pathlib import Path
-from src.config import config
 from src.retriever.base import Retriever
 from src.chains.llm_manager import LLMManager
 
@@ -97,14 +96,7 @@ class QAChain:
     def llm(self) -> LLMManager:
         """获取 LLM 实例"""
         if self.llm_manager is None:
-            # 使用 DeepSeek 作为默认模型
-            try:
-                self.llm_manager = LLMManager(default_model="deepseek")
-            except ValueError:
-                # 如果没有 API key，使用 DeepSeek 直连方式
-                from langchain_community.llms import HuggingFacePipeline
-                import os
-                self.llm_manager = None
+            self.llm_manager = LLMManager(default_model="deepseek")
         return self.llm_manager
 
     def run(self, query: str) -> QAResult:

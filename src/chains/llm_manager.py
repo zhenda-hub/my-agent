@@ -2,7 +2,6 @@
 import os
 from typing import Optional
 from openai import OpenAI
-from src.config import config
 
 
 class LLMManager:
@@ -99,9 +98,21 @@ class LLMManager:
         temperature = temperature if temperature is not None else self.temperature
 
         try:
+            # 确保 prompt 是字符串类型
+            if not isinstance(prompt, str):
+                prompt = str(prompt)
+
+            # 构造标准 OpenAI 消息格式
+            messages = [
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+
             response = self.client.chat.completions.create(
                 model=model,
-                messages=[{"role": "user", "content": prompt}],
+                messages=messages,
                 temperature=temperature,
             )
             return response.choices[0].message.content
@@ -129,6 +140,7 @@ class LLMManager:
         temperature = temperature if temperature is not None else self.temperature
 
         try:
+            # 直接使用传入的消息列表（已是标准 OpenAI 格式）
             response = self.client.chat.completions.create(
                 model=model,
                 messages=messages,
