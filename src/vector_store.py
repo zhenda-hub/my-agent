@@ -1,7 +1,6 @@
 """向量存储模块"""
 from typing import List, Dict, Any, Optional
-from chromadb import Client, Collection
-from chromadb.config import Settings
+from chromadb import PersistentClient, Collection
 from src.config import config
 from src.embeddings import get_embeddings
 from src.loaders.base import Document
@@ -18,18 +17,15 @@ class VectorStore:
             collection_name: 集合名称
         """
         self.collection_name = collection_name or config.CHROMA_COLLECTION_NAME
-        self._client: Optional[Client] = None
+        self._client: Optional[PersistentClient] = None
         self._collection: Optional[Collection] = None
         self._embeddings = get_embeddings()
 
     @property
-    def client(self) -> Client:
+    def client(self) -> PersistentClient:
         """获取 Chroma 客户端"""
         if self._client is None:
-            self._client = Client(Settings(
-                chroma_db_impl="duckdb+parquet",
-                persist_directory=config.CHROMA_PERSIST_DIR,
-            ))
+            self._client = PersistentClient(path=config.CHROMA_PERSIST_DIR)
         return self._client
 
     @property
