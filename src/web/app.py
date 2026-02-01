@@ -167,6 +167,51 @@ def process_upload(files: List, state: SessionState, progress: gr.Progress = gr.
     return summary
 
 
+def process_url(url: str, state: SessionState) -> str:
+    """处理 URL 抓取"""
+    if not url or not url.strip():
+        return "❌ 请输入 URL"
+
+    url = url.strip()
+
+    # 检查是否已存在
+    if state.vector_store.source_exists(url):
+        return f"⏭️ URL 已存在: {url}"
+
+    try:
+        from src.loaders.web_loader import WebLoader
+        from src.loaders.base import Document
+
+        # 抓取网页
+        loader = WebLoader()
+        documents = loader.load(url)
+
+        # 切分文档
+        chunked_docs = []
+        for doc in documents:
+            chunks = split_text(doc.content)
+            for i, chunk in enumerate(chunks):
+                chunked_doc = Document(
+                    content=chunk,
+                    metadata={
+                        **doc.metadata,
+                        "chunk_index": i,
+                        "total_chunks": len(chunks),
+                    },
+                    source=doc.source,
+                )
+                chunked_docs.append(chunked_doc)
+
+        # 存储到向量库
+        state.vector_store.add_documents(chunked_docs)
+        state.documents_loaded = True
+
+        return f"✅ 成功抓取: {url}\n📊 共 {len(chunked_docs)} 个文档块"
+
+    except Exception as e:
+        return f"❌ 抓取失败: {url}\n错误: {str(e)}"
+
+
 def chat_response(
     message: str,
     history: List[dict],
@@ -292,6 +337,24 @@ def create_interface() -> gr.Blocks:
 
                 upload_btn = gr.Button("📤 上传文档", variant="primary", size="lg")
 
+                gr.Markdown("---")
+
+                gr.Markdown("### 🌐 网页抓取")
+
+                url_input = gr.Textbox(
+                    label="网页 URL",
+                    placeholder="输入网址，如 https://example.com",
+                )
+
+                url_status = gr.Textbox(
+                    label="抓取状态",
+                    lines=3,
+                    interactive=False,
+                    value="等待输入...",
+                )
+
+                url_btn = gr.Button("🔗 抓取网页", variant="secondary", size="lg")
+
         gr.Markdown("### 💬 问答")
 
         chatbot = gr.Chatbot(
@@ -330,6 +393,18 @@ def create_interface() -> gr.Blocks:
             fn=handle_upload,
             inputs=[file_upload],
             outputs=[upload_status],
+        )
+
+        def handle_url(url):
+            return process_url(url, state)
+
+        url_btn.click(
+            fn=handle_url,
+            inputs=[url_input],
+            outputs=[url_status],
+        ).then(
+            lambda: "",
+            outputs=[url_input],
         )
 
         def handle_chat(message, history, api_key, model):
