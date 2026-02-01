@@ -192,14 +192,16 @@ class QAChain:
         """
         context_parts = []
 
-        for i, source in enumerate(sources, 1):
+        for source in sources:
             source_file = source.get("source", "未知来源")
             content = source.get("content", "")
-            context_parts.append(
-                f"[参考文档 {i}]\n"
-                f"来源：{source_file}\n"
-                f"内容：{content}"
-            )
+            metadata = source.get("metadata", {})
+
+            # 提取文件名和块编号
+            file_name = Path(source_file).stem if source_file != "未知来源" else "未知"
+            chunk_index = metadata.get("chunk_index", 0) + 1  # 从1开始
+
+            context_parts.append(f"[{file_name} 第{chunk_index}块]\n内容：{content}")
 
         return "\n\n".join(context_parts)
 
