@@ -23,6 +23,8 @@ dependencies = [
     # LLM (OpenRouter 使用 OpenAI SDK)
     "openai>=1.12.0",
     "ipykernel>=7.1.0",
+    # 测试
+    "pytest>=8.0.0",
 ]
 
 [build-system]
@@ -31,3 +33,8 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["."]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]

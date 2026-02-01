@@ -1,7 +1,4 @@
 """测试跳过已上传文件功能"""
-import sys
-sys.path.insert(0, 'src')
-
 from src.vector_store import VectorStore
 from src.loaders.base import Document
 

@@ -1,21 +1,11 @@
 """Test LLM API call"""
 import os
-import sys
-
-# 添加项目根目录到路径
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from dotenv import load_dotenv
 from openai import OpenAI
 
 # Load environment variables from .env file
 load_dotenv()
 
-# Fix Windows console encoding issue
-if sys.platform == "win32":
-    import io
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 def test_direct_openai_sdk():
     """Test direct OpenAI SDK call to OpenRouter"""
