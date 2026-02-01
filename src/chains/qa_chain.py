@@ -49,13 +49,17 @@ class QAResult:
     answer: str
     sources: List[Dict[str, Any]]
     citations: List[Citation] = field(default_factory=list)
+    answer_html: str = ""  # 带引用链接的 HTML
+    documents_data: List[Dict] = field(default_factory=list)  # 按文档分组的数据
 
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
         return {
             "answer": self.answer,
+            "answer_html": self.answer_html,
             "sources": self.sources,
             "citations": [c.to_dict() for c in self.citations],
+            "documents_data": self.documents_data,
         }
 
 
@@ -141,11 +145,19 @@ class QAChain:
         # 生成引用
         citations = self._generate_citations(sources)
 
-        # 返回结果（带来源和引用）
+        # 解析答案中的引用并生成 HTML
+        from src.chains.citation_parser import CitationParser
+        parser = CitationParser(sources)
+        answer_html = parser.parse(answer)
+        documents_data = parser.get_document_data()
+
+        # 返回结果（带来源、引用和 HTML）
         return QAResult(
             answer=answer,
+            answer_html=answer_html,
             sources=sources,
             citations=citations,
+            documents_data=documents_data,
         )
 
     def _generate_citations(self, sources: List[Dict[str, Any]]) -> List[Citation]:

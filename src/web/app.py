@@ -1,7 +1,8 @@
 """Gradio Web 界面 - Book RAG"""
 import gradio as gr
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict, Any
+import json
 
 
 def split_text(text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]:
@@ -35,36 +36,6 @@ def split_text(text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]
     return chunks
 
 
-def format_citations_with_details(citations) -> str:
-    """
-    格式化引用为可折叠的 details 组件
-
-    Args:
-        citations: 引用列表（Citation 对象）
-
-    Returns:
-        带 HTML details 标签的格式化字符串
-    """
-    if not citations:
-        return ""
-
-    citation_html = "**📚 来源引用:**\n\n"
-
-    for citation in citations:
-        citation_html += f"""
-<details>
-<summary>📖 《{citation.book_title}》{citation.chapter_title} (第{citation.page_num}页)</summary>
-
-{citation.full_content}
-
-</details>
-
----
-"""
-
-    return citation_html
-
-
 # 全局状态
 class SessionState:
     """会话状态管理"""
@@ -75,6 +46,7 @@ class SessionState:
         self._vector_store = None
         self._embeddings = None
         self.documents_loaded: bool = False
+        self.current_citations: List = []  # 当前问答的引用列表
 
     @property
     def embeddings(self):
@@ -241,13 +213,21 @@ def chat_response(
         # 执行问答
         result = qa_chain.run(message)
 
-        # 格式化响应
-        response = result.answer
+        # 保存引用到状态中
+        state.current_citations = result.citations
 
-        # 添加可折叠的引用
-        if result.citations:
-            response += "\n\n---\n\n"
-            response += format_citations_with_details(result.citations)
+        # 使用带引用链接的 HTML
+        response = result.answer_html if result.answer_html else result.answer
+
+        # 注入初始化脚本
+        if result.documents_data:
+            docs_json = json.dumps(result.documents_data, ensure_ascii=False)
+            response += f'''
+<script>
+setTimeout(function() {{
+    initCitationLinks({docs_json});
+}}, 100);
+</script>'''
 
         history.append({"role": "user", "content": message})
         history.append({"role": "assistant", "content": response})
@@ -263,11 +243,123 @@ def chat_response(
 def create_interface() -> gr.Blocks:
     """创建 Gradio 界面"""
 
+    # 自定义 JavaScript 和模态框
+    custom_js = """
+    <style>
+    #citation-modal {
+        display: none;
+        position: fixed;
+        z-index: 9999;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+        justify-content: center;
+        align-items: center;
+    }
+    #citation-modal-content {
+        background-color: white;
+        padding: 24px;
+        border-radius: 12px;
+        max-width: 700px;
+        max-height: 70vh;
+        overflow-y: auto;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    .chunk-item {
+        margin-bottom: 16px;
+        padding: 12px;
+        background: #f5f5f5;
+        border-left: 3px solid #1f77b4;
+        border-radius: 4px;
+    }
+    .chunk-header {
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 8px;
+    }
+    .chunk-content {
+        white-space: pre-wrap;
+        line-height: 1.6;
+        color: #555;
+    }
+    .citation-link {
+        color: #1f77b4;
+        text-decoration: underline;
+        cursor: pointer;
+    }
+    </style>
+
+    <div id="citation-modal">
+        <div id="citation-modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 id="citation-modal-title">文档内容</h3>
+                <button onclick="document.getElementById('citation-modal').style.display='none'" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+            </div>
+            <div id="citation-modal-body"></div>
+        </div>
+    </div>
+
+    <script>
+    let documentsData = [];
+
+    function showCitationModal(docIndex) {
+        if (docIndex < 0 || docIndex >= documentsData.length) return;
+
+        const doc = documentsData[docIndex];
+        document.getElementById('citation-modal-title').textContent = '《' + doc.doc_name + '》';
+
+        // 构建内容 HTML
+        let contentHtml = '';
+        if (doc.chunks.length === 0) {
+            contentHtml = '<p>没有找到相关内容</p>';
+        } else {
+            doc.chunks.forEach((chunk, idx) => {
+                let header = '片段 ' + (idx + 1);
+                if (chunk.chapter_title) {
+                    header += ' - ' + chunk.chapter_title;
+                }
+                if (chunk.page > 0) {
+                    header += ' (第' + chunk.page + '页)';
+                }
+
+                contentHtml += '<div class="chunk-item">' +
+                    '<div class="chunk-header">' + header + '</div>' +
+                    '<div class="chunk-content">' + chunk.content + '</div>' +
+                    '</div>';
+            });
+        }
+
+        document.getElementById('citation-modal-body').innerHTML = contentHtml;
+        document.getElementById('citation-modal').style.display = 'flex';
+    }
+
+    function initCitationLinks(data) {
+        documentsData = data;
+        document.querySelectorAll('.citation-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const index = parseInt(this.getAttribute('data-doc-index'));
+                showCitationModal(index);
+            });
+        });
+    }
+
+    window.addEventListener('click', function(e) {
+        if (e.target.id === 'citation-modal') {
+            document.getElementById('citation-modal').style.display = 'none';
+        }
+    });
+    </script>
+    """
+
     state = SessionState()
 
     with gr.Blocks(
         title="Book RAG - 知识库问答",
         analytics_enabled=False,
+        head=custom_js,
     ) as app:
 
         gr.Markdown(
@@ -400,11 +492,11 @@ if __name__ == "__main__":
     app = create_interface()
 
     print("📱 Interface created, launching...", file=sys.stderr, flush=True)
-    print("🌐 Open http://127.0.0.1:7861 in your browser", file=sys.stderr, flush=True)
+    print("🌐 Open http://127.0.0.1:7862 in your browser", file=sys.stderr, flush=True)
 
     app.launch(
         server_name="127.0.0.1",
-        server_port=7861,
+        server_port=7863,
         share=False,
         show_error=True,
         quiet=False,
