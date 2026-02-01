@@ -27,7 +27,13 @@
       "Bash(git worktree:*)",
       "Bash(copy:*)",
       "Bash(git restore:*)",
-      "Bash(uv run pytest:*)"
+      "Bash(uv run pytest:*)",
+      "Bash(tree:*)",
+      "Bash(pkill:*)",
+      "Bash(curl:*)",
+      "Bash(netstat:*)",
+      "Bash(taskkill:*)",
+      "Bash(xargs:*)"
     ]
   }
 }
