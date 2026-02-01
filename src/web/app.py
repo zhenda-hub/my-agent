@@ -2,7 +2,6 @@
 import gradio as gr
 from pathlib import Path
 from typing import List, Tuple, Optional, Dict, Any
-import json
 
 
 def split_text(text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]:
@@ -216,18 +215,8 @@ def chat_response(
         # 保存引用到状态中
         state.current_citations = result.citations
 
-        # 使用带引用链接的 HTML
-        response = result.answer_html if result.answer_html else result.answer
-
-        # 注入初始化脚本
-        if result.documents_data:
-            docs_json = json.dumps(result.documents_data, ensure_ascii=False)
-            response += f'''
-<script>
-setTimeout(function() {{
-    initCitationLinks({docs_json});
-}}, 100);
-</script>'''
+        # 直接使用格式化后的答案（包含引用内容）
+        response = result.answer
 
         history.append({"role": "user", "content": message})
         history.append({"role": "assistant", "content": response})
@@ -242,124 +231,11 @@ setTimeout(function() {{
 
 def create_interface() -> gr.Blocks:
     """创建 Gradio 界面"""
-
-    # 自定义 JavaScript 和模态框
-    custom_js = """
-    <style>
-    #citation-modal {
-        display: none;
-        position: fixed;
-        z-index: 9999;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0,0,0,0.5);
-        justify-content: center;
-        align-items: center;
-    }
-    #citation-modal-content {
-        background-color: white;
-        padding: 24px;
-        border-radius: 12px;
-        max-width: 700px;
-        max-height: 70vh;
-        overflow-y: auto;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-    }
-    .chunk-item {
-        margin-bottom: 16px;
-        padding: 12px;
-        background: #f5f5f5;
-        border-left: 3px solid #1f77b4;
-        border-radius: 4px;
-    }
-    .chunk-header {
-        font-weight: bold;
-        color: #333;
-        margin-bottom: 8px;
-    }
-    .chunk-content {
-        white-space: pre-wrap;
-        line-height: 1.6;
-        color: #555;
-    }
-    .citation-link {
-        color: #1f77b4;
-        text-decoration: underline;
-        cursor: pointer;
-    }
-    </style>
-
-    <div id="citation-modal">
-        <div id="citation-modal-content">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                <h3 id="citation-modal-title">文档内容</h3>
-                <button onclick="document.getElementById('citation-modal').style.display='none'" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
-            </div>
-            <div id="citation-modal-body"></div>
-        </div>
-    </div>
-
-    <script>
-    let documentsData = [];
-
-    function showCitationModal(docIndex) {
-        if (docIndex < 0 || docIndex >= documentsData.length) return;
-
-        const doc = documentsData[docIndex];
-        document.getElementById('citation-modal-title').textContent = '《' + doc.doc_name + '》';
-
-        // 构建内容 HTML
-        let contentHtml = '';
-        if (doc.chunks.length === 0) {
-            contentHtml = '<p>没有找到相关内容</p>';
-        } else {
-            doc.chunks.forEach((chunk, idx) => {
-                let header = '片段 ' + (idx + 1);
-                if (chunk.chapter_title) {
-                    header += ' - ' + chunk.chapter_title;
-                }
-                if (chunk.page > 0) {
-                    header += ' (第' + chunk.page + '页)';
-                }
-
-                contentHtml += '<div class="chunk-item">' +
-                    '<div class="chunk-header">' + header + '</div>' +
-                    '<div class="chunk-content">' + chunk.content + '</div>' +
-                    '</div>';
-            });
-        }
-
-        document.getElementById('citation-modal-body').innerHTML = contentHtml;
-        document.getElementById('citation-modal').style.display = 'flex';
-    }
-
-    function initCitationLinks(data) {
-        documentsData = data;
-        document.querySelectorAll('.citation-link').forEach(link => {
-            link.addEventListener('click', function(e) {
-                e.preventDefault();
-                const index = parseInt(this.getAttribute('data-doc-index'));
-                showCitationModal(index);
-            });
-        });
-    }
-
-    window.addEventListener('click', function(e) {
-        if (e.target.id === 'citation-modal') {
-            document.getElementById('citation-modal').style.display = 'none';
-        }
-    });
-    </script>
-    """
-
     state = SessionState()
 
     with gr.Blocks(
         title="Book RAG - 知识库问答",
         analytics_enabled=False,
-        head=custom_js,
     ) as app:
 
         gr.Markdown(
@@ -496,7 +372,7 @@ if __name__ == "__main__":
 
     app.launch(
         server_name="127.0.0.1",
-        server_port=7863,
+        server_port=7865,
         share=False,
         show_error=True,
         quiet=False,
