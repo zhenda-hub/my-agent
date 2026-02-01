@@ -63,17 +63,27 @@ class SessionState:
         return self._vector_store
 
 
-# 模型选项
-MODEL_OPTIONS = [
-    "deepseek",
-    "deepseek-reasoner",
-    "gpt-4",
-    "gpt-3.5",
-    "claude-opus",
-    "claude-sonnet",
-    "gemini",
-    "llama",
-]
+def get_initial_models() -> list:
+    """
+    获取初始模型列表（从 OpenRouter API 动态获取免费模型）
+
+    Returns:
+        模型 ID 列表
+    """
+    import os
+    try:
+        api_key = os.getenv("OPENROUTER_API_KEY", "")
+        if api_key:
+            from src.chains.llm_manager import LLMManager
+            llm = LLMManager(api_key=api_key)
+            models = llm.get_free_models()
+            if models:
+                return models
+    except Exception:
+        pass
+
+    # 降级到默认模型
+    return ["deepseek"]
 
 
 def process_upload(files: List, state: SessionState, progress: gr.Progress = gr.Progress()) -> str:
@@ -281,6 +291,9 @@ def create_interface() -> gr.Blocks:
 
     state = SessionState()
 
+    # 启动时获取免费模型列表
+    initial_models = get_initial_models()
+
     with gr.Blocks(
         title="Book RAG - 知识库问答",
         analytics_enabled=False,
@@ -307,8 +320,8 @@ def create_interface() -> gr.Blocks:
 
                 model_dropdown = gr.Dropdown(
                     label="选择模型",
-                    choices=MODEL_OPTIONS,
-                    value="deepseek",
+                    choices=initial_models,
+                    value=initial_models[0] if initial_models else "deepseek",
                 )
 
                 gr.Markdown("""

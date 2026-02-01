@@ -179,3 +179,56 @@ class LLMManager:
             模型映射字典
         """
         return self.MODELS.copy()
+
+    def fetch_models(self) -> list:
+        """
+        从 OpenRouter API 获取模型列表
+
+        Returns:
+            模型信息列表
+        """
+        import requests
+
+        try:
+            response = requests.get(
+                f"{self.BASE_URL}/models",
+                headers={"Authorization": f"Bearer {self.api_key}"},
+                timeout=10,
+            )
+            response.raise_for_status()
+            return response.json().get("data", [])
+        except Exception as e:
+            # 返回空列表而不是抛出异常
+            return []
+
+    def get_free_models(self) -> list:
+        """
+        获取免费模型列表
+
+        Returns:
+            免费模型的 ID 列表
+        """
+        models = self.fetch_models()
+        free_models = []
+
+        for model in models:
+            model_id = model.get("id", "")
+            pricing = model.get("pricing", {})
+
+            # 检查是否为免费模型
+            # 方法1: 模型ID包含 :free 后缀
+            # 方法2: prompt 价格为 "0" 或 0
+            # 方法3: completion 价格为 "0" 或 0
+            prompt_price = pricing.get("prompt", "0")
+            completion_price = pricing.get("completion", "0")
+
+            is_free = (
+                ":free" in model_id or
+                prompt_price == "0" or prompt_price == 0 or
+                completion_price == "0" or completion_price == 0
+            )
+
+            if is_free:
+                free_models.append(model_id)
+
+        return free_models
