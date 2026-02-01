@@ -77,37 +77,55 @@ MODEL_OPTIONS = [
 
 
 def process_upload(files: List, state: SessionState, progress: gr.Progress = gr.Progress()) -> str:
-    """处理文件上传 - 支持流式进度显示"""
+    """处理文件上传 - 支持流式进度显示，跳过已上传的文件"""
     if not files:
         return "❌ 请选择文件"
 
     count = 0
+    skipped = 0
     total_chunks = 0
     status_lines = []
 
     from src.loaders import get_loader
     from src.loaders.base import Document
 
-    total_steps = len(files) * 3  # 每个文件3步：解析、切分、embedding
+    # 统计需要处理的文件数量
+    files_to_process = []
+    skipped_files = []
+
+    for file in files:
+        file_path = file.name
+        path = Path(file_path)
+        if state.vector_store.source_exists(str(path)):
+            skipped_files.append(path.name)
+        else:
+            files_to_process.append(file)
+
+    total_steps = len(files_to_process) * 3  # 每个文件3步：解析、切分、embedding
     current_step = 0
 
-    for file_idx, file in enumerate(files, 1):
+    # 先报告跳过的文件
+    if skipped_files:
+        status_lines.append(f"⏭️ 跳过 {len(skipped_files)} 个已上传的文件: {', '.join(skipped_files)}")
+        skipped = len(skipped_files)
+
+    for file_idx, file in enumerate(files_to_process, 1):
         file_path = file.name
         path = Path(file_path)
 
         try:
             # 步骤1: 解析文档
             current_step += 1
-            progress(current_step / total_steps, desc=f"📖 [{file_idx}/{len(files)}] 正在解析 {path.name}...")
+            progress(current_step / total_steps, desc=f"📖 [{file_idx}/{len(files_to_process)}] 正在解析 {path.name}...")
 
             loader = get_loader(str(path))
             documents = loader.load(str(path))
 
-            status_lines.append(f"📖 [{file_idx}/{len(files)}] {path.name}: 已提取 {len(documents)} 页")
+            status_lines.append(f"📖 [{file_idx}/{len(files_to_process)}] {path.name}: 已提取 {len(documents)} 页")
 
             # 步骤2: 切分文档
             current_step += 1
-            progress(current_step / total_steps, desc=f"✂️ [{file_idx}/{len(files)}] 正在切分 {path.name}...")
+            progress(current_step / total_steps, desc=f"✂️ [{file_idx}/{len(files_to_process)}] 正在切分 {path.name}...")
 
             chunked_docs = []
             for doc in documents:
@@ -124,27 +142,28 @@ def process_upload(files: List, state: SessionState, progress: gr.Progress = gr.
                     )
                     chunked_docs.append(chunked_doc)
 
-            status_lines.append(f"✂️ [{file_idx}/{len(files)}] {path.name}: 已切分 {len(chunked_docs)} 块")
+            status_lines.append(f"✂️ [{file_idx}/{len(files_to_process)}] {path.name}: 已切分 {len(chunked_docs)} 块")
 
             # 清除旧数据
             state.vector_store.delete_by_source(str(path))
 
             # 步骤3: 生成 embeddings
             current_step += 1
-            progress(current_step / total_steps, desc=f"🔢 [{file_idx}/{len(files)}] 正在生成 embeddings ({len(chunked_docs)} 块)...")
+            progress(current_step / total_steps, desc=f"🔢 [{file_idx}/{len(files_to_process)}] 正在生成 embeddings ({len(chunked_docs)} 块)...")
 
             state.vector_store.add_documents(chunked_docs)
 
-            status_lines.append(f"✅ [{file_idx}/{len(files)}] {path.name}: 完成！共 {len(chunked_docs)} 个块")
+            status_lines.append(f"✅ [{file_idx}/{len(files_to_process)}] {path.name}: 完成！共 {len(chunked_docs)} 个块")
             count += 1
             total_chunks += len(chunked_docs)
 
         except Exception as e:
-            status_lines.append(f"❌ [{file_idx}/{len(files)}] {path.name}: {str(e)}")
+            status_lines.append(f"❌ [{file_idx}/{len(files_to_process)}] {path.name}: {str(e)}")
 
-    state.documents_loaded = count > 0
+    state.documents_loaded = count > 0 or skipped > 0
 
-    summary = f"📊 已上传 {count} 个文件，共 {total_chunks} 个文档块\n\n" + "\n".join(status_lines)
+    total_processed = count + skipped
+    summary = f"📊 共 {total_processed} 个文件 (新增 {count} 个，跳过 {skipped} 个已存在)，共 {total_chunks} 个文档块\n\n" + "\n".join(status_lines)
     return summary
 
 

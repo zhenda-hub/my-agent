@@ -131,6 +131,19 @@ class VectorStore:
         if results["ids"]:
             self.collection.delete(ids=results["ids"])
 
+    def source_exists(self, source: str) -> bool:
+        """
+        检查指定来源的文档是否已存在
+
+        Args:
+            source: 文档来源（文件路径）
+
+        Returns:
+            文档是否存在
+        """
+        results = self.collection.get(where={"source": source})
+        return bool(results["ids"])
+
     def clear(self):
         """清空集合"""
         try:
