@@ -150,18 +150,19 @@ def process_upload(files: List, state: SessionState, progress: gr.Progress = gr.
 
 def chat_response(
     message: str,
-    history: List[Tuple[str, str]],
+    history: List[dict],
     api_key: str,
     model: str,
     state: SessionState,
-) -> List[Tuple[str, str]]:
-    """处理问答"""
+) -> List[dict]:
+    """处理问答 - 返回 messages 格式"""
     if not message.strip():
         return history
 
     # 检查 API Key
     if not api_key:
-        history.append((message, "⚠️ 请先配置 OpenRouter API Key"))
+        history.append({"role": "user", "content": message})
+        history.append({"role": "assistant", "content": "⚠️ 请先配置 OpenRouter API Key"})
         return history
 
     # 更新 LLM 管理器
@@ -176,7 +177,8 @@ def chat_response(
 
     # 检查文档
     if not state.documents_loaded:
-        history.append((message, "⚠️ 请先上传文档"))
+        history.append({"role": "user", "content": message})
+        history.append({"role": "assistant", "content": "⚠️ 请先上传文档"})
         return history
 
     try:
@@ -199,11 +201,13 @@ def chat_response(
             for citation in result.citations:
                 response += f"\n📖 《{citation.book_title}》{citation.chapter_title} (第{citation.page_num}页)\n"
 
-        history.append((message, response))
+        history.append({"role": "user", "content": message})
+        history.append({"role": "assistant", "content": response})
 
     except Exception as e:
         error_msg = f"❌ 问答出错: {str(e)}"
-        history.append((message, error_msg))
+        history.append({"role": "user", "content": message})
+        history.append({"role": "assistant", "content": error_msg})
 
     return history
 

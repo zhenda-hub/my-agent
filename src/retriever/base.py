@@ -10,6 +10,7 @@ class Retriever:
         self,
         top_k: int = None,
         filter_metadata: Dict[str, Any] = None,
+        vector_store=None,
     ):
         """
         初始化检索器
@@ -17,10 +18,11 @@ class Retriever:
         Args:
             top_k: 返回结果数量
             filter_metadata: 元数据过滤条件
+            vector_store: 可选的向量存储实例（用于使用特定的 vector_store）
         """
         self.top_k = top_k
         self.filter_metadata = filter_metadata
-        self._vector_store = None
+        self._vector_store = vector_store
 
     @property
     def vector_store(self):
