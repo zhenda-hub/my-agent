@@ -35,6 +35,36 @@ def split_text(text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]
     return chunks
 
 
+def format_citations_with_details(citations) -> str:
+    """
+    格式化引用为可折叠的 details 组件
+
+    Args:
+        citations: 引用列表（Citation 对象）
+
+    Returns:
+        带 HTML details 标签的格式化字符串
+    """
+    if not citations:
+        return ""
+
+    citation_html = "**📚 来源引用:**\n\n"
+
+    for citation in citations:
+        citation_html += f"""
+<details>
+<summary>📖 《{citation.book_title}》{citation.chapter_title} (第{citation.page_num}页)</summary>
+
+{citation.full_content}
+
+</details>
+
+---
+"""
+
+    return citation_html
+
+
 # 全局状态
 class SessionState:
     """会话状态管理"""
@@ -214,11 +244,10 @@ def chat_response(
         # 格式化响应
         response = result.answer
 
-        # 添加引用
+        # 添加可折叠的引用
         if result.citations:
-            response += "\n\n---\n**📚 来源引用:**\n"
-            for citation in result.citations:
-                response += f"\n📖 《{citation.book_title}》{citation.chapter_title} (第{citation.page_num}页)\n"
+            response += "\n\n---\n\n"
+            response += format_citations_with_details(result.citations)
 
         history.append({"role": "user", "content": message})
         history.append({"role": "assistant", "content": response})
@@ -297,6 +326,7 @@ def create_interface() -> gr.Blocks:
         chatbot = gr.Chatbot(
             label="对话历史",
             height=400,
+            sanitize_html=False,  # 允许 HTML 标签（用于可折叠引用）
         )
 
         with gr.Row():

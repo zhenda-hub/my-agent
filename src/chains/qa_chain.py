@@ -13,6 +13,7 @@ class Citation:
     chapter_title: str
     page_num: int
     excerpt: str
+    full_content: str = ""  # 完整内容，用于展示原文
     confidence: float = 1.0
 
     def to_dict(self) -> Dict[str, Any]:
@@ -22,6 +23,7 @@ class Citation:
             "chapter_title": self.chapter_title,
             "page_num": self.page_num,
             "excerpt": self.excerpt,
+            "full_content": self.full_content,
             "confidence": self.confidence,
         }
 
@@ -175,6 +177,7 @@ class QAChain:
                 chapter_title=chapter_title,
                 page_num=page_num,
                 excerpt=excerpt,
+                full_content=content,  # 保存完整内容
             )
             citations.append(citation)
 
