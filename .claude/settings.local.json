@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(git checkout:*)",
+      "Bash(uv sync:*)",
+      "Bash(uv run python:*)",
+      "Bash(cat:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Skill(pptx)",
+      "Bash(node:*)",
+      "Bash(npm init:*)",
+      "Bash(npm install:*)",
+      "Bash(npx playwright install:*)",
+      "Bash(uv pip list:*)",
+      "Bash(timeout:*)",
+      "Bash(del:*)",
+      "Bash(rm:*)",
+      "Bash(git merge:*)",
+      "Bash(git branch:*)",
+      "Bash(dir:*)",
+      "Bash(ls:*)",
+      "Bash(findstr:*)",
+      "Bash(python:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(git worktree:*)",
+      "Bash(copy:*)",
+      "Bash(git restore:*)"
+    ]
+  }
+}
