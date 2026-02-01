@@ -76,30 +76,39 @@ MODEL_OPTIONS = [
 ]
 
 
-def process_upload(files: List, state: SessionState) -> str:
-    """处理文件上传"""
+def process_upload(files: List, state: SessionState, progress: gr.Progress = gr.Progress()) -> str:
+    """处理文件上传 - 支持流式进度显示"""
     if not files:
         return "❌ 请选择文件"
 
     count = 0
-    results = []
     total_chunks = 0
+    status_lines = []
 
     from src.loaders import get_loader
     from src.loaders.base import Document
 
-    for file in files:
+    total_steps = len(files) * 3  # 每个文件3步：解析、切分、embedding
+    current_step = 0
+
+    for file_idx, file in enumerate(files, 1):
         file_path = file.name
         path = Path(file_path)
 
         try:
-            # 获取加载器
-            loader = get_loader(str(path))
+            # 步骤1: 解析文档
+            current_step += 1
+            progress(current_step / total_steps, desc=f"📖 [{file_idx}/{len(files)}] 正在解析 {path.name}...")
 
-            # 加载文档
+            loader = get_loader(str(path))
             documents = loader.load(str(path))
 
-            # 切分文档
+            status_lines.append(f"📖 [{file_idx}/{len(files)}] {path.name}: 已提取 {len(documents)} 页")
+
+            # 步骤2: 切分文档
+            current_step += 1
+            progress(current_step / total_steps, desc=f"✂️ [{file_idx}/{len(files)}] 正在切分 {path.name}...")
+
             chunked_docs = []
             for doc in documents:
                 chunks = split_text(doc.content)
@@ -115,22 +124,27 @@ def process_upload(files: List, state: SessionState) -> str:
                     )
                     chunked_docs.append(chunked_doc)
 
+            status_lines.append(f"✂️ [{file_idx}/{len(files)}] {path.name}: 已切分 {len(chunked_docs)} 块")
+
             # 清除旧数据
             state.vector_store.delete_by_source(str(path))
 
-            # 添加到向量存储
+            # 步骤3: 生成 embeddings
+            current_step += 1
+            progress(current_step / total_steps, desc=f"🔢 [{file_idx}/{len(files)}] 正在生成 embeddings ({len(chunked_docs)} 块)...")
+
             state.vector_store.add_documents(chunked_docs)
 
+            status_lines.append(f"✅ [{file_idx}/{len(files)}] {path.name}: 完成！共 {len(chunked_docs)} 个块")
             count += 1
             total_chunks += len(chunked_docs)
-            results.append(f"✅ {path.name}: {len(chunked_docs)} 个块")
 
         except Exception as e:
-            results.append(f"❌ {path.name}: {str(e)}")
+            status_lines.append(f"❌ [{file_idx}/{len(files)}] {path.name}: {str(e)}")
 
     state.documents_loaded = count > 0
 
-    summary = f"📊 已上传 {count} 个文件，共 {total_chunks} 个文档块\n\n" + "\n".join(results)
+    summary = f"📊 已上传 {count} 个文件，共 {total_chunks} 个文档块\n\n" + "\n".join(status_lines)
     return summary
 
 

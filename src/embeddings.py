@@ -37,7 +37,14 @@ class Embeddings:
         Returns:
             嵌入向量列表
         """
-        return self.model.encode(texts, convert_to_numpy=True).tolist()
+        # 使用批处理优化性能
+        return self.model.encode(
+            texts,
+            convert_to_numpy=True,
+            batch_size=32,  # 批处理大小，平衡内存和速度
+            show_progress_bar=False,  # 禁用内部进度条，避免干扰
+            normalize_embeddings=True,
+        ).tolist()
 
     def embed_query(self, text: str) -> List[float]:
         """
