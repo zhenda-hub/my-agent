@@ -33,7 +33,9 @@
       "Bash(curl:*)",
       "Bash(netstat:*)",
       "Bash(taskkill:*)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(set:*)",
+      "Bash(git stash:*)"
     ]
   }
 }

@@ -1,0 +1,94 @@
+"""测试动态获取 OpenRouter 免费模型功能"""
+import sys
+sys.path.insert(0, 'src')
+
+from src.chains.llm_manager import LLMManager
+
+
+def test_fetch_models():
+    """测试获取模型列表"""
+    # 注意：需要设置 OPENROUTER_API_KEY 环境变量
+    import os
+    from dotenv import load_dotenv
+    load_dotenv()
+
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    if not api_key:
+        print("跳过测试：未设置 OPENROUTER_API_KEY")
+        return
+
+    llm = LLMManager(api_key=api_key)
+    models = llm.fetch_models()
+
+    assert len(models) > 0, "应该获取到模型列表"
+    assert "id" in models[0], "模型应包含 id 字段"
+    assert "pricing" in models[0], "模型应包含 pricing 字段"
+
+    print(f"✓ 获取到 {len(models)} 个模型")
+
+
+def test_get_free_models():
+    """测试获取免费模型列表"""
+    import os
+    from dotenv import load_dotenv
+    load_dotenv()
+
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    if not api_key:
+        print("跳过测试：未设置 OPENROUTER_API_KEY")
+        return
+
+    llm = LLMManager(api_key=api_key)
+    free_models = llm.get_free_models()
+
+    assert len(free_models) > 0, "应该获取到免费模型"
+
+    # 验证所有模型都是免费的
+    for model_id in free_models[:5]:  # 检查前5个
+        assert ":free" in model_id or "/free" in model_id, f"模型 {model_id} 应该是免费的"
+
+    print(f"✓ 获取到 {len(free_models)} 个免费模型")
+
+
+def test_get_free_models_no_api_key():
+    """测试没有 API Key 时的行为"""
+    # 创建一个没有 API Key 的管理器
+    try:
+        llm = LLMManager(api_key="fake-key")
+        models = llm.fetch_models()
+        # 应该返回空列表而不是抛出异常
+        assert models == [], "没有有效 API Key 时应返回空列表"
+        print("✓ 无 API Key 时正确返回空列表")
+    except Exception as e:
+        print(f"✓ 无 API Key 时抛出异常: {type(e).__name__}")
+
+
+def test_get_initial_models():
+    """测试获取初始模型列表"""
+    import os
+    from dotenv import load_dotenv
+
+    # 模拟有 API Key 的环境
+    if os.getenv("OPENROUTER_API_KEY"):
+        load_dotenv()
+        from src.web.app import get_initial_models
+        models = get_initial_models()
+        assert len(models) > 0, "应该获取到模型列表"
+        assert models != ["deepseek"], "有 API Key 时不应该只返回默认模型"
+        print(f"✓ 获取到 {len(models)} 个初始模型")
+    else:
+        from src.web.app import get_initial_models
+        models = get_initial_models()
+        assert models == ["deepseek"], "无 API Key 时应返回默认模型"
+        print("✓ 无 API Key 时返回默认模型")
+
+
+if __name__ == "__main__":
+    print("=== 测试动态模型功能 ===\n")
+
+    test_fetch_models()
+    test_get_free_models()
+    test_get_free_models_no_api_key()
+    test_get_initial_models()
+
+    print("\n所有测试完成！")

@@ -72,6 +72,11 @@ def get_initial_models() -> list:
         模型 ID 列表
     """
     import os
+    from dotenv import load_dotenv
+
+    # 加载环境变量
+    load_dotenv()
+
     try:
         api_key = os.getenv("OPENROUTER_API_KEY", "")
         if api_key:
@@ -80,8 +85,8 @@ def get_initial_models() -> list:
             models = llm.get_free_models()
             if models:
                 return models
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"获取模型列表失败: {e}", file=sys.stderr)
 
     # 降级到默认模型
     return ["deepseek"]
@@ -456,11 +461,11 @@ if __name__ == "__main__":
     app = create_interface()
 
     print("📱 Interface created, launching...", file=sys.stderr, flush=True)
-    print("🌐 Open http://127.0.0.1:7862 in your browser", file=sys.stderr, flush=True)
+    print("🌐 Open http://127.0.0.1:7866 in your browser", file=sys.stderr, flush=True)
 
     app.launch(
         server_name="127.0.0.1",
-        server_port=7865,
+        server_port=7866,
         share=False,
         show_error=True,
         quiet=False,
