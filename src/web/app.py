@@ -461,11 +461,11 @@ if __name__ == "__main__":
     app = create_interface()
 
     print("📱 Interface created, launching...", file=sys.stderr, flush=True)
-    print("🌐 Open http://127.0.0.1:7866 in your browser", file=sys.stderr, flush=True)
+    print("🌐 Open http://127.0.0.1:7861 in your browser", file=sys.stderr, flush=True)
 
     app.launch(
         server_name="127.0.0.1",
-        server_port=7866,
+        server_port=7861,
         share=False,
         show_error=True,
         quiet=False,
