@@ -5,6 +5,7 @@ from src.loaders.docx_loader import DocxLoader
 from src.loaders.markdown_loader import MarkdownLoader
 from src.loaders.web_loader import WebLoader
 from src.loaders.epub_loader import EPUBLoader
+from src.loaders.txt_loader import TXTLoader
 
 
 # 文件扩展名到加载器的映射
@@ -12,6 +13,7 @@ LOADER_MAPPING = {
     ".pdf": PDFLoader,
     ".docx": DocxLoader,
     ".doc": DocxLoader,
+    ".txt": TXTLoader,
     ".md": MarkdownLoader,
     ".markdown": MarkdownLoader,
     ".epub": EPUBLoader,
@@ -43,6 +45,7 @@ __all__ = [
     "Document",
     "PDFLoader",
     "DocxLoader",
+    "TXTLoader",
     "MarkdownLoader",
     "WebLoader",
     "EPUBLoader",

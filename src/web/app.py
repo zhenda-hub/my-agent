@@ -290,7 +290,7 @@ def create_interface() -> gr.Blocks:
             """
             # 📚 Book RAG - 知识库问答
 
-            上传文档，配置 API Key，开始智能问答！支持 PDF、DOCX、MD、EPUB 格式。
+            上传文档，配置 API Key，开始智能问答！支持 PDF、DOCX、TXT、MD、EPUB 格式。
             """
         )
 
@@ -325,7 +325,7 @@ def create_interface() -> gr.Blocks:
                 file_upload = gr.File(
                     label="上传文档",
                     file_count="multiple",
-                    file_types=[".pdf", ".docx", ".doc", ".md", ".markdown", ".epub"],
+                    file_types=[".pdf", ".docx", ".doc", ".txt", ".md", ".markdown", ".epub"],
                 )
 
                 upload_status = gr.Textbox(
