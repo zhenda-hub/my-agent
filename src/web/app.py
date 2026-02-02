@@ -1,7 +1,7 @@
 """Gradio Web 界面 - Book RAG"""
 import gradio as gr
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict, Any
 
 
 def split_text(text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]:
@@ -45,6 +45,7 @@ class SessionState:
         self._vector_store = None
         self._embeddings = None
         self.documents_loaded: bool = False
+        self.current_citations: List = []  # 当前问答的引用列表
 
     @property
     def embeddings(self):
@@ -266,14 +267,11 @@ def chat_response(
         # 执行问答
         result = qa_chain.run(message)
 
-        # 格式化响应
-        response = result.answer
+        # 保存引用到状态中
+        state.current_citations = result.citations
 
-        # 添加引用
-        if result.citations:
-            response += "\n\n---\n**📚 来源引用:**\n"
-            for citation in result.citations:
-                response += f"\n📖 《{citation.book_title}》{citation.chapter_title} (第{citation.page_num}页)\n"
+        # 直接使用格式化后的答案（包含引用内容）
+        response = result.answer
 
         history.append({"role": "user", "content": message})
         history.append({"role": "assistant", "content": response})
@@ -288,7 +286,6 @@ def chat_response(
 
 def create_interface() -> gr.Blocks:
     """创建 Gradio 界面"""
-
     state = SessionState()
 
     # 启动时获取免费模型列表
@@ -373,6 +370,7 @@ def create_interface() -> gr.Blocks:
         chatbot = gr.Chatbot(
             label="对话历史",
             height=400,
+            sanitize_html=False,  # 允许 HTML 标签（用于可折叠引用）
         )
 
         with gr.Row():
@@ -458,11 +456,11 @@ if __name__ == "__main__":
     app = create_interface()
 
     print("📱 Interface created, launching...", file=sys.stderr, flush=True)
-    print("🌐 Open http://127.0.0.1:7861 in your browser", file=sys.stderr, flush=True)
+    print("🌐 Open http://127.0.0.1:7862 in your browser", file=sys.stderr, flush=True)
 
     app.launch(
         server_name="127.0.0.1",
-        server_port=7861,
+        server_port=7865,
         share=False,
         show_error=True,
         quiet=False,
