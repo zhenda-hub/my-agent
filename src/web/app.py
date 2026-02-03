@@ -1,7 +1,7 @@
 """Gradio Web 界面 - Book RAG"""
 import gradio as gr
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict, Any
 
 
 def split_text(text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]:
@@ -45,6 +45,7 @@ class SessionState:
         self._vector_store = None
         self._embeddings = None
         self.documents_loaded: bool = False
+        self.current_citations: List = []  # 当前问答的引用列表
 
     @property
     def embeddings(self):
@@ -71,6 +72,11 @@ def get_initial_models() -> list:
         模型 ID 列表
     """
     import os
+    from dotenv import load_dotenv
+
+    # 加载环境变量
+    load_dotenv()
+
     try:
         api_key = os.getenv("OPENROUTER_API_KEY", "")
         if api_key:
@@ -79,8 +85,8 @@ def get_initial_models() -> list:
             models = llm.get_free_models()
             if models:
                 return models
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"获取模型列表失败: {e}", file=sys.stderr)
 
     # 降级到默认模型
     return ["deepseek"]
@@ -266,14 +272,11 @@ def chat_response(
         # 执行问答
         result = qa_chain.run(message)
 
-        # 格式化响应
-        response = result.answer
+        # 保存引用到状态中
+        state.current_citations = result.citations
 
-        # 添加引用
-        if result.citations:
-            response += "\n\n---\n**📚 来源引用:**\n"
-            for citation in result.citations:
-                response += f"\n📖 《{citation.book_title}》{citation.chapter_title} (第{citation.page_num}页)\n"
+        # 直接使用格式化后的答案（包含引用内容）
+        response = result.answer
 
         history.append({"role": "user", "content": message})
         history.append({"role": "assistant", "content": response})
@@ -288,7 +291,6 @@ def chat_response(
 
 def create_interface() -> gr.Blocks:
     """创建 Gradio 界面"""
-
     state = SessionState()
 
     # 启动时获取免费模型列表
@@ -303,7 +305,7 @@ def create_interface() -> gr.Blocks:
             """
             # 📚 Book RAG - 知识库问答
 
-            上传文档，配置 API Key，开始智能问答！支持 PDF、DOCX、MD、EPUB 格式。
+            上传文档，配置 API Key，开始智能问答！支持 PDF、DOCX、TXT、MD、EPUB 格式。
             """
         )
 
@@ -338,7 +340,7 @@ def create_interface() -> gr.Blocks:
                 file_upload = gr.File(
                     label="上传文档",
                     file_count="multiple",
-                    file_types=[".pdf", ".docx", ".doc", ".md", ".markdown", ".epub"],
+                    file_types=[".pdf", ".docx", ".doc", ".txt", ".md", ".markdown", ".epub"],
                 )
 
                 upload_status = gr.Textbox(
@@ -373,6 +375,7 @@ def create_interface() -> gr.Blocks:
         chatbot = gr.Chatbot(
             label="对话历史",
             height=400,
+            sanitize_html=False,  # 允许 HTML 标签（用于可折叠引用）
         )
 
         with gr.Row():
