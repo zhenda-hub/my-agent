@@ -1,5 +1,4 @@
 """EPUB 电子书加载器"""
-from pathlib import Path
 from typing import List
 import ebooklib
 from ebooklib import epub
@@ -20,9 +19,7 @@ class EPUBLoader(BaseLoader):
         Returns:
             文档列表（每个章节一个文档）
         """
-        path_obj = Path(path)
-        if not path_obj.exists():
-            raise FileNotFoundError(f"EPUB file not found: {path}")
+        path_obj = self.validate_file_path(path, file_type="EPUB")
 
         documents = []
 

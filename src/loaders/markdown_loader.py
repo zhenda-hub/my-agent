@@ -1,5 +1,4 @@
 """Markdown 文档加载器"""
-from pathlib import Path
 from typing import List
 from src.loaders.base import BaseLoader, Document
 
@@ -17,9 +16,7 @@ class MarkdownLoader(BaseLoader):
         Returns:
             文档列表（整个文档作为一个文档）
         """
-        path_obj = Path(path)
-        if not path_obj.exists():
-            raise FileNotFoundError(f"Markdown file not found: {path}")
+        path_obj = self.validate_file_path(path, file_type="Markdown")
 
         with open(path, "r", encoding="utf-8") as f:
             content = f.read()

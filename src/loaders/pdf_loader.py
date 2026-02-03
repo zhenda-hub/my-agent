@@ -1,5 +1,4 @@
 """PDF 文档加载器"""
-from pathlib import Path
 from typing import List
 import pypdf
 from src.loaders.base import BaseLoader, Document
@@ -18,9 +17,7 @@ class PDFLoader(BaseLoader):
         Returns:
             文档列表（每个页面一个文档）
         """
-        path_obj = Path(path)
-        if not path_obj.exists():
-            raise FileNotFoundError(f"PDF file not found: {path}")
+        path_obj = self.validate_file_path(path, file_type="PDF")
 
         documents = []
 
