@@ -44,7 +44,7 @@ class Config:
     API_PORT: int = int(os.getenv("API_PORT", "8000"))
 
     @classmethod
-    def ensure_dirs(cls):
+    def ensure_dirs(cls) -> None:
         """确保必要的目录存在"""
         cls.DATA_DIR.mkdir(parents=True, exist_ok=True)
         cls.DOCUMENTS_DIR.mkdir(parents=True, exist_ok=True)
