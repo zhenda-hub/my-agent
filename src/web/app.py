@@ -46,6 +46,7 @@ class SessionState:
         self._embeddings = None
         self.documents_loaded: bool = False
         self.current_citations: List = []  # 当前问答的引用列表
+        self.selected_sources: List[str] = []  # 用户选中的文件来源
 
     @property
     def embeddings(self):
@@ -228,6 +229,45 @@ def process_url(url: str, state: SessionState) -> str:
         return f"❌ 抓取失败: {url}\n错误: {str(e)}"
 
 
+def refresh_file_list(state: SessionState) -> Tuple[List[str], str]:
+    """
+    刷新文件列表 - 从数据库获取所有已上传的文件
+
+    Returns:
+        (文件名列表, 信息文本)
+    """
+    all_sources = state.vector_store.get_all_sources()
+
+    # 提取文件名（从完整路径）
+    filenames = [Path(src).name for src in all_sources]
+
+    # 默认全选
+    state.selected_sources = all_sources
+
+    info = f"📁 数据库中共有 {len(all_sources)} 个文件"
+    return filenames, info
+
+
+def update_selected_sources(selected_filenames: List[str], state: SessionState) -> None:
+    """
+    更新用户选中的文件
+
+    Args:
+        selected_filenames: 用户在界面上选中的文件名列表
+        state: 会话状态
+    """
+    all_sources = state.vector_store.get_all_sources()
+
+    # 将文件名映射回完整路径
+    filename_to_source = {Path(src).name: src for src in all_sources}
+
+    # 更新选中的 sources
+    state.selected_sources = [
+        filename_to_source[name] for name in selected_filenames
+        if name in filename_to_source
+    ]
+
+
 def chat_response(
     message: str,
     history: List[dict],
@@ -265,8 +305,15 @@ def chat_response(
         from src.chains.qa_chain import QAChain
         from src.retriever.base import Retriever
 
-        # 创建 QA 链
-        retriever = Retriever(vector_store=state.vector_store)
+        # 创建检索器时添加 source 过滤
+        filter_dict = None
+        if state.selected_sources:
+            filter_dict = {"source": {"$in": state.selected_sources}}
+
+        retriever = Retriever(
+            vector_store=state.vector_store,
+            filter_metadata=filter_dict
+        )
         qa_chain = QAChain(retriever=retriever, llm_manager=state.llm_manager)
 
         # 执行问答
@@ -370,6 +417,23 @@ def create_interface() -> gr.Blocks:
 
                 url_btn = gr.Button("🔗 抓取网页", variant="secondary", size="lg")
 
+        gr.Markdown("### 📁 已上传文件")
+
+        with gr.Row():
+            file_list_info = gr.Textbox(
+                label="文件列表",
+                value="点击刷新查看文件...",
+                interactive=False,
+                scale=3
+            )
+            refresh_files_btn = gr.Button("🔄 刷新", scale=1)
+
+        file_checkbox = gr.CheckboxGroup(
+            label="选择用于 RAG 的文件（未选择=使用所有文件）",
+            choices=[],
+            value=[],
+        )
+
         gr.Markdown("### 💬 问答")
 
         chatbot = gr.Chatbot(
@@ -402,25 +466,60 @@ def create_interface() -> gr.Blocks:
         )
 
         # 事件绑定
+        # 定义处理函数
         def handle_upload(files):
             return process_upload(files, state)
-
-        upload_btn.click(
-            fn=handle_upload,
-            inputs=[file_upload],
-            outputs=[upload_status],
-        )
 
         def handle_url(url):
             return process_url(url, state)
 
+        # 刷新文件列表
+        def handle_refresh():
+            filenames, info = refresh_file_list(state)
+            return filenames, info, filenames
+
+        # 更新选中文件
+        def handle_file_selection(selected_filenames):
+            update_selected_sources(selected_filenames, state)
+            return None
+
+        # 上传后自动刷新文件列表
+        upload_btn.click(
+            fn=handle_upload,
+            inputs=[file_upload],
+            outputs=[upload_status],
+        ).then(
+            fn=handle_refresh,
+            inputs=[],
+            outputs=[file_checkbox, file_list_info, file_checkbox],
+        )
+
+        # URL 抓取后自动刷新文件列表
         url_btn.click(
             fn=handle_url,
             inputs=[url_input],
             outputs=[url_status],
         ).then(
+            fn=handle_refresh,
+            inputs=[],
+            outputs=[file_checkbox, file_list_info, file_checkbox],
+        ).then(
             lambda: "",
             outputs=[url_input],
+        )
+
+        # 刷新文件列表按钮
+        refresh_files_btn.click(
+            fn=handle_refresh,
+            inputs=[],
+            outputs=[file_checkbox, file_list_info, file_checkbox],
+        )
+
+        # 文件选择变化
+        file_checkbox.change(
+            fn=handle_file_selection,
+            inputs=[file_checkbox],
+            outputs=[],
         )
 
         def handle_chat(message, history, api_key, model):

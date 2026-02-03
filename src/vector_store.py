@@ -144,6 +144,27 @@ class VectorStore:
         results = self.collection.get(where={"source": source})
         return bool(results["ids"])
 
+    def get_all_sources(self) -> List[str]:
+        """
+        获取数据库中所有文档来源
+
+        Returns:
+            来源列表（文件路径）
+        """
+        # 获取所有文档的 metadata
+        results = self.collection.get()
+
+        if not results["metadatas"]:
+            return []
+
+        # 提取唯一的 source
+        sources = set()
+        for metadata in results["metadatas"]:
+            if "source" in metadata:
+                sources.add(metadata["source"])
+
+        return sorted(list(sources))
+
     def clear(self):
         """清空集合"""
         try:
