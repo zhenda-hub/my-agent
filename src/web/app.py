@@ -476,7 +476,8 @@ def create_interface() -> gr.Blocks:
         # 刷新文件列表
         def handle_refresh():
             filenames, info = refresh_file_list(state)
-            return filenames, info, filenames
+            # 同时更新 choices 和 value，避免验证错误
+            return gr.update(choices=filenames, value=filenames), info, gr.update(choices=filenames, value=filenames)
 
         # 更新选中文件
         def handle_file_selection(selected_filenames):
