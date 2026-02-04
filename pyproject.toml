@@ -25,6 +25,7 @@ dependencies = [
     "ipykernel>=7.1.0",
     # 测试
     "pytest>=8.0.0",
+    "streamlit>=1.53.1",
 ]
 
 [build-system]
