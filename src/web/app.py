@@ -4,8 +4,45 @@ from pathlib import Path
 from typing import List, Tuple, Optional, Dict, Any
 
 
+def _find_best_split_position(text: str, start: int, end: int) -> int:
+    """
+    在文本范围内查找最佳切分位置（句号、问号、感叹号或换行符）
+
+    Args:
+        text: 完整文本
+        start: 起始位置
+        end: 结束位置
+
+    Returns:
+        最佳切分位置，如果没有合适位置则返回原始 end
+    """
+    # 查找各种标点符号的位置
+    period_pos = text.rfind("。", start, end)
+    exclamation_pos = text.rfind("！", start, end)
+    question_pos = text.rfind("？", start, end)
+    newline_pos = text.rfind("\n", start, end)
+
+    # 取最靠后的有效位置
+    best_pos = max(period_pos, exclamation_pos, question_pos, newline_pos)
+
+    # 只有当最佳位置在 chunk 后半部分时才使用，避免切分出太短的块
+    if best_pos > start + (end - start) // 2:
+        return best_pos + 1
+    return end
+
+
 def split_text(text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]:
-    """将文本切分成小块"""
+    """
+    将文本切分成小块，优先在句子边界切分
+
+    Args:
+        text: 要切分的文本
+        chunk_size: 每块的最大字符数
+        overlap: 块之间的重叠字符数
+
+    Returns:
+        文本块列表
+    """
     if len(text) <= chunk_size:
         return [text]
 
@@ -15,21 +52,15 @@ def split_text(text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]
     while start < len(text):
         end = start + chunk_size
 
-        # 尝试在句号、换行符等位置切分
+        # 如果未到文本末尾，尝试在合适位置切分
         if end < len(text):
-            period_pos = text.rfind("。", start, end)
-            exclamation_pos = text.rfind("！", start, end)
-            question_pos = text.rfind("？", start, end)
-            newline_pos = text.rfind("\n", start, end)
-
-            best_pos = max(period_pos, exclamation_pos, question_pos, newline_pos)
-            if best_pos > start + chunk_size // 2:
-                end = best_pos + 1
+            end = _find_best_split_position(text, start, end)
 
         chunk = text[start:end].strip()
         if chunk:
             chunks.append(chunk)
 
+        # 计算下一块的起始位置（处理重叠）
         start = end - overlap if end < len(text) else end
 
     return chunks
