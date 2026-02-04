@@ -6,6 +6,14 @@ if TYPE_CHECKING:
     from src.vector_store import VectorStore
 
 
+# 示例问题
+EXAMPLE_QUESTIONS = [
+    "文档的主要内容是什么？",
+    "总结一下核心观点",
+    "有什么关键结论？",
+]
+
+
 def generate_response(prompt: str, vector_store: "VectorStore") -> dict:
     """生成回复
 
@@ -78,11 +86,44 @@ def render_chat_interface(vector_store: "VectorStore") -> None:
                         for citation in msg["citations"]:
                             st.caption(f"- {citation}")
 
-    # 清空对话按钮（在聊天历史下方）
+    # 清空对话按钮
     if st.session_state.chat_history:
         if st.button("清空对话", key="clear_chat"):
             st.session_state.chat_history = []
             st.rerun()
+
+    # 示例问题（仅在无对话历史时显示）
+    if not st.session_state.chat_history:
+        st.markdown("**💡 试试这些问题：**")
+        cols = st.columns(len(EXAMPLE_QUESTIONS))
+        for col, question in zip(cols, EXAMPLE_QUESTIONS):
+            with col:
+                if st.button(question, key=f"example_{question}", use_container_width=True):
+                    # 添加用户消息
+                    st.session_state.chat_history.append({"role": "user", "content": question})
+
+                    with st.chat_message("user"):
+                        st.markdown(question)
+
+                    # 生成助手回复
+                    with st.chat_message("assistant"):
+                        with st.spinner("思考中..."):
+                            response = generate_response(question, vector_store)
+                            st.markdown(response["answer"])
+
+                            if response.get("citations"):
+                                with st.expander("📚 查看引用"):
+                                    for citation in response["citations"]:
+                                        st.caption(f"- {citation}")
+
+                            # 添加到历史
+                            st.session_state.chat_history.append({
+                                "role": "assistant",
+                                "content": response["answer"],
+                                "citations": response.get("citations", [])
+                            })
+
+                    st.rerun()
 
     # 聊天输入
     if prompt := st.chat_input("输入你的问题..."):
