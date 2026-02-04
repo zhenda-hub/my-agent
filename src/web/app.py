@@ -1,11 +1,54 @@
 """Gradio Web 界面 - Book RAG"""
 import gradio as gr
+import sys
 from pathlib import Path
-from typing import List, Tuple, Optional, Dict, Any
+from typing import List, Tuple, Optional, Dict, Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.embeddings import Embeddings
+    from src.vector_store import VectorStore
+    from src.chains.llm_manager import LLMManager
+
+
+def _find_best_split_position(text: str, start: int, end: int) -> int:
+    """
+    在文本范围内查找最佳切分位置（句号、问号、感叹号或换行符）
+
+    Args:
+        text: 完整文本
+        start: 起始位置
+        end: 结束位置
+
+    Returns:
+        最佳切分位置，如果没有合适位置则返回原始 end
+    """
+    # 查找各种标点符号的位置
+    period_pos = text.rfind("。", start, end)
+    exclamation_pos = text.rfind("！", start, end)
+    question_pos = text.rfind("？", start, end)
+    newline_pos = text.rfind("\n", start, end)
+
+    # 取最靠后的有效位置
+    best_pos = max(period_pos, exclamation_pos, question_pos, newline_pos)
+
+    # 只有当最佳位置在 chunk 后半部分时才使用，避免切分出太短的块
+    if best_pos > start + (end - start) // 2:
+        return best_pos + 1
+    return end
 
 
 def split_text(text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]:
-    """将文本切分成小块"""
+    """
+    将文本切分成小块，优先在句子边界切分
+
+    Args:
+        text: 要切分的文本
+        chunk_size: 每块的最大字符数
+        overlap: 块之间的重叠字符数
+
+    Returns:
+        文本块列表
+    """
     if len(text) <= chunk_size:
         return [text]
 
@@ -15,21 +58,15 @@ def split_text(text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]
     while start < len(text):
         end = start + chunk_size
 
-        # 尝试在句号、换行符等位置切分
+        # 如果未到文本末尾，尝试在合适位置切分
         if end < len(text):
-            period_pos = text.rfind("。", start, end)
-            exclamation_pos = text.rfind("！", start, end)
-            question_pos = text.rfind("？", start, end)
-            newline_pos = text.rfind("\n", start, end)
-
-            best_pos = max(period_pos, exclamation_pos, question_pos, newline_pos)
-            if best_pos > start + chunk_size // 2:
-                end = best_pos + 1
+            end = _find_best_split_position(text, start, end)
 
         chunk = text[start:end].strip()
         if chunk:
             chunks.append(chunk)
 
+        # 计算下一块的起始位置（处理重叠）
         start = end - overlap if end < len(text) else end
 
     return chunks
@@ -38,18 +75,18 @@ def split_text(text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]
 # 全局状态
 class SessionState:
     """会话状态管理"""
-    def __init__(self):
+    def __init__(self) -> None:
         self.api_key: Optional[str] = None
         self.model: str = "deepseek"
-        self.llm_manager = None
-        self._vector_store = None
-        self._embeddings = None
+        self.llm_manager: Optional["LLMManager"] = None
+        self._vector_store: Optional["VectorStore"] = None
+        self._embeddings: Optional["Embeddings"] = None
         self.documents_loaded: bool = False
-        self.current_citations: List = []  # 当前问答的引用列表
+        self.current_citations: List[Dict[str, Any]] = []  # 当前问答的引用列表
         self.selected_sources: List[str] = []  # 用户选中的文件来源
 
     @property
-    def embeddings(self):
+    def embeddings(self) -> "Embeddings":
         """延迟加载 embeddings"""
         if self._embeddings is None:
             from src.embeddings import get_embeddings
@@ -57,7 +94,7 @@ class SessionState:
         return self._embeddings
 
     @property
-    def vector_store(self):
+    def vector_store(self) -> "VectorStore":
         """延迟加载向量存储"""
         if self._vector_store is None:
             from src.vector_store import get_vector_store
@@ -65,7 +102,7 @@ class SessionState:
         return self._vector_store
 
 
-def get_initial_models() -> list:
+def get_initial_models() -> List[str]:
     """
     获取初始模型列表（从 OpenRouter API 动态获取免费模型）
 

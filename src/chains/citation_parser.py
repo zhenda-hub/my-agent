@@ -81,7 +81,7 @@ class CitationParser:
 
         return processed_text
 
-    def get_document_data(self) -> List[Dict]:
+    def get_document_data(self) -> List[Dict[str, Any]]:
         """
         生成文档数据供 JavaScript 使用
 

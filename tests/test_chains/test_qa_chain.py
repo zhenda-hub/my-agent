@@ -1,0 +1,261 @@
+"""测试 QAChain 问答链"""
+import pytest
+from unittest.mock import Mock, patch
+from src.chains.qa_chain import QAChain, QAResult, Citation
+
+
+class TestCitation:
+    """测试 Citation 数据类"""
+
+    def test_to_dict(self):
+        """测试转换为字典"""
+        citation = Citation(
+            book_title="测试书",
+            chapter_title="第一章",
+            page_num=10,
+            excerpt="这是一段摘录"
+        )
+
+        result = citation.to_dict()
+
+        assert result["book_title"] == "测试书"
+        assert result["chapter_title"] == "第一章"
+        assert result["page_num"] == 10
+        assert result["excerpt"] == "这是一段摘录"
+
+    def test_format_chinese(self):
+        """测试中文格式化"""
+        citation = Citation(
+            book_title="测试书",
+            chapter_title="第一章",
+            page_num=10,
+            excerpt="摘录"
+        )
+
+        result = citation.format(language="zh")
+
+        assert "《测试书》" in result
+        assert "第一章" in result
+        assert "第10页" in result
+        assert "摘录" in result
+
+    def test_format_english(self):
+        """测试英文格式化"""
+        citation = Citation(
+            book_title="Test Book",
+            chapter_title="Chapter 1",
+            page_num=5,
+            excerpt="excerpt"
+        )
+
+        result = citation.format(language="en")
+
+        assert "Test Book" in result
+        assert "Chapter 1" in result
+        assert "page 5" in result
+
+
+class TestQAResult:
+    """测试 QAResult 数据类"""
+
+    def test_to_dict(self):
+        """测试转换为字典"""
+        citation = Citation(
+            book_title="书",
+            chapter_title="章",
+            page_num=1,
+            excerpt="摘录"
+        )
+
+        result = QAResult(
+            answer="测试答案",
+            sources=[{"content": "内容"}],
+            citations=[citation]
+        )
+
+        dict_result = result.to_dict()
+
+        assert dict_result["answer"] == "测试答案"
+        assert len(dict_result["citations"]) == 1
+        assert dict_result["citations"][0]["book_title"] == "书"
+
+
+class TestQAChain:
+    """测试 QAChain 类"""
+
+    def test_run_with_sources(self):
+        """测试有来源的问答流程"""
+        # Mock retriever
+        mock_retriever = Mock()
+        mock_retriever.get_sources.return_value = [
+            {
+                "content": "测试内容",
+                "source": "test.pdf",
+                "metadata": {"book_title": "测试书", "chapter_title": "第一章", "page": 1}
+            }
+        ]
+
+        # Mock LLM manager
+        mock_llm = Mock()
+        mock_llm.generate.return_value = "这是 LLM 生成的答案"
+
+        qa_chain = QAChain(retriever=mock_retriever, llm_manager=mock_llm)
+        result = qa_chain.run("测试问题")
+
+        assert "LLM 生成的答案" in result.answer
+        assert len(result.sources) == 1
+        assert result.sources[0]["source"] == "test.pdf"
+        assert len(result.citations) == 1
+
+    def test_run_no_sources(self):
+        """测试无检索结果"""
+        mock_retriever = Mock()
+        mock_retriever.get_sources.return_value = []
+
+        qa_chain = QAChain(retriever=mock_retriever)
+        result = qa_chain.run("测试问题")
+
+        assert "没有找到" in result.answer
+        assert result.sources == []
+        assert result.citations == []
+
+    def test_build_context(self):
+        """测试上下文构建"""
+        sources = [
+            {
+                "content": "内容1",
+                "source": "doc1.pdf",
+                "metadata": {"chunk_index": 0}
+            },
+            {
+                "content": "内容2",
+                "source": "doc2.pdf",
+                "metadata": {"chunk_index": 1}
+            }
+        ]
+
+        mock_retriever = Mock()
+        qa_chain = QAChain(retriever=mock_retriever)
+        context = qa_chain._build_context(sources)
+
+        # 实际输出是文件名（不含扩展名）
+        assert "doc1" in context
+        assert "内容1" in context
+        assert "doc2" in context
+        assert "内容2" in context
+        assert "第1块" in context
+        assert "第2块" in context
+
+    def test_generate_citations(self):
+        """测试引用生成"""
+        # 创建超过 100 字符的内容来测试截断
+        long_content = "这是一段很长的测试内容，用于验证摘录功能是否正常工作。" * 5
+
+        sources = [
+            {
+                "content": long_content,
+                "source": "test.pdf",
+                "metadata": {
+                    "book_title": "测试书",
+                    "chapter_title": "第一章",
+                    "page": 10
+                }
+            }
+        ]
+
+        mock_retriever = Mock()
+        qa_chain = QAChain(retriever=mock_retriever)
+        citations = qa_chain._generate_citations(sources)
+
+        assert len(citations) == 1
+        assert citations[0].book_title == "测试书"
+        assert citations[0].chapter_title == "第一章"
+        assert citations[0].page_num == 10
+        assert "..." in citations[0].excerpt  # 内容被截断
+
+    def test_format_answer_with_citations(self):
+        """测试答案格式化"""
+        answer = "这是原始答案"
+        sources = [
+            {
+                "content": "引用内容",
+                "source": "/path/to/test.pdf",
+                "metadata": {"chapter_title": "第一章", "page": 5}
+            }
+        ]
+
+        mock_retriever = Mock()
+        qa_chain = QAChain(retriever=mock_retriever)
+        result = qa_chain._format_answer_with_citations(answer, sources)
+
+        assert "这是原始答案" in result
+        assert "test" in result  # 文件名（不含扩展名和路径）
+        assert "第一章" in result
+        assert "引用内容" in result
+        assert "引用来源" in result
+
+    def test_format_answer_with_citations_empty_sources(self):
+        """测试空来源时答案格式化"""
+        answer = "原始答案"
+
+        mock_retriever = Mock()
+        qa_chain = QAChain(retriever=mock_retriever)
+        result = qa_chain._format_answer_with_citations(answer, [])
+
+        assert result == "原始答案"
+
+    def test_custom_retriever_and_llm(self):
+        """测试自定义检索器和 LLM"""
+        mock_retriever = Mock()
+        mock_retriever.get_sources.return_value = []
+
+        mock_llm = Mock()
+        mock_llm.generate.return_value = "答案"
+
+        qa_chain = QAChain(retriever=mock_retriever, llm_manager=mock_llm)
+
+        assert qa_chain.retriever is mock_retriever
+        assert qa_chain.llm_manager is mock_llm
+
+    def test_run_without_llm_manager(self):
+        """测试没有 LLM 管理器的情况"""
+        mock_retriever = Mock()
+        mock_retriever.get_sources.return_value = [
+            {"content": "内容", "source": "test.pdf", "metadata": {}}
+        ]
+
+        qa_chain = QAChain(retriever=mock_retriever, llm_manager=None)
+        result = qa_chain.run("问题")
+
+        # 应该返回简单回答
+        assert "相关文档" in result.answer
+
+    def test_citation_to_dict(self):
+        """测试 Citation 序列化"""
+        citation = Citation(
+            book_title="书",
+            chapter_title="章",
+            page_num=1,
+            excerpt="摘录",
+            full_content="完整内容"
+        )
+
+        result = citation.to_dict()
+
+        assert result["book_title"] == "书"
+        assert result["full_content"] == "完整内容"
+
+    def test_qa_result_to_dict(self):
+        """测试 QAResult 序列化"""
+        citation = Citation("书", "章", 1, "摘录")
+        result = QAResult(
+            answer="答案",
+            sources=[{"content": "内容"}],
+            citations=[citation]
+        )
+
+        dict_result = result.to_dict()
+
+        assert dict_result["answer"] == "答案"
+        assert len(dict_result["sources"]) == 1
+        assert len(dict_result["citations"]) == 1

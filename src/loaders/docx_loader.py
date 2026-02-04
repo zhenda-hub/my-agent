@@ -1,5 +1,4 @@
 """Word 文档加载器"""
-from pathlib import Path
 from typing import List
 from docx import Document as DocxDocument
 from src.loaders.base import BaseLoader, Document
@@ -18,9 +17,7 @@ class DocxLoader(BaseLoader):
         Returns:
             文档列表（整个文档作为一个文档）
         """
-        path_obj = Path(path)
-        if not path_obj.exists():
-            raise FileNotFoundError(f"Word file not found: {path}")
+        path_obj = self.validate_file_path(path, file_type="Word")
 
         doc = DocxDocument(path)
         paragraphs = []
