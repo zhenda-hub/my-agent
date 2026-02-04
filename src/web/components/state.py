@@ -16,17 +16,23 @@ def init_session_state() -> None:
         st.session_state.selected_sources = []
     if 'documents_loaded' not in st.session_state:
         st.session_state.documents_loaded = False
+    if '_vector_store' not in st.session_state:
+        st.session_state._vector_store = None
+    if '_embeddings' not in st.session_state:
+        st.session_state._embeddings = None
 
 
-@st.cache_resource
-def get_vector_store_cached():
-    """缓存向量存储实例"""
-    from src.vector_store import get_vector_store
-    return get_vector_store()
+def get_vector_store():
+    """获取向量存储实例（延迟加载）"""
+    if st.session_state._vector_store is None:
+        from src.vector_store import get_vector_store as _get_vector_store
+        st.session_state._vector_store = _get_vector_store()
+    return st.session_state._vector_store
 
 
-@st.cache_resource
-def get_embeddings_cached():
-    """缓存嵌入模型实例"""
-    from src.embeddings import get_embeddings
-    return get_embeddings()
+def get_embeddings():
+    """获取嵌入模型实例（延迟加载）"""
+    if st.session_state._embeddings is None:
+        from src.embeddings import get_embeddings as _get_embeddings
+        st.session_state._embeddings = _get_embeddings()
+    return st.session_state._embeddings
