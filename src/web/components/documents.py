@@ -62,6 +62,14 @@ def render_document_panel(vector_store: "VectorStore") -> None:
                 for i, file in enumerate(uploaded_files):
                     status.update(label=f"处理 {file.name} ({i+1}/{total})")
 
+                    # 使用原始文件名作为 source（加上前缀避免冲突）
+                    original_source = f"upload:{file.name}"
+
+                    # 检查是否已存在
+                    if vector_store.source_exists(original_source):
+                        st.info(f"⏭️ {file.name} 已存在，跳过")
+                        continue
+
                     # 保存临时文件
                     with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file.name).suffix) as f:
                         f.write(file.getvalue())
@@ -69,11 +77,6 @@ def render_document_panel(vector_store: "VectorStore") -> None:
 
                     try:
                         path = Path(temp_path)
-
-                        # 检查是否已存在
-                        if vector_store.source_exists(str(path)):
-                            st.info(f"⏭️ {file.name} 已存在，跳过")
-                            continue
 
                         # 加载文档
                         loader = get_loader(str(path))
@@ -90,13 +93,14 @@ def render_document_panel(vector_store: "VectorStore") -> None:
                                         **doc.metadata,
                                         "chunk_index": j,
                                         "total_chunks": len(chunks),
+                                        "original_filename": file.name,  # 保存原始文件名
                                     },
-                                    source=doc.source,
+                                    source=original_source,  # 使用原始文件名作为 source
                                 )
                                 chunked_docs.append(chunked_doc)
 
-                        # 清除旧数据
-                        vector_store.delete_by_source(str(path))
+                        # 清除旧数据（如果存在）
+                        vector_store.delete_by_source(original_source)
 
                         # 存储到向量库
                         vector_store.add_documents(chunked_docs)
@@ -104,6 +108,12 @@ def render_document_panel(vector_store: "VectorStore") -> None:
 
                     except Exception as e:
                         st.error(f"❌ {file.name}: {e}")
+                    finally:
+                        # 清理临时文件
+                        try:
+                            Path(temp_path).unlink(missing_ok=True)
+                        except:
+                            pass
 
                 status.update(label="完成！", state="complete")
                 st.session_state.documents_loaded = True
@@ -171,7 +181,7 @@ def render_file_management(vector_store: "VectorStore") -> None:
         vector_store: 向量存储实例
     """
     with st.expander("📁 文件管理"):
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
 
         with col1:
             if st.button("刷新列表", use_container_width=True):
@@ -181,21 +191,53 @@ def render_file_management(vector_store: "VectorStore") -> None:
             files_count = len(vector_store.get_all_sources())
             st.metric("文件数量", files_count)
 
-        all_sources = vector_store.get_all_sources()
-        filenames = [Path(src).name for src in all_sources]
+        with col3:
+            # 清除临时文件按钮
+            if st.button("清除旧数据", use_container_width=True):
+                all_sources = vector_store.get_all_sources()
+                # 删除所有临时文件（以 C:\ 开头的）
+                deleted = 0
+                for source in all_sources:
+                    if source.startswith("C:\\") or source.startswith("/tmp/"):
+                        vector_store.delete_by_source(source)
+                        deleted += 1
+                if deleted > 0:
+                    st.success(f"✅ 已清除 {deleted} 个旧文件")
+                    st.rerun()
+                else:
+                    st.info("没有旧数据需要清除")
 
-        if filenames:
+        all_sources = vector_store.get_all_sources()
+
+        # 分组显示：上传的文件和网页
+        upload_files = [s for s in all_sources if s.startswith("upload:")]
+        web_files = [s for s in all_sources if s.startswith("http")]
+        old_files = [s for s in all_sources if s not in upload_files + web_files]
+
+        if upload_files or web_files:
+            # 创建显示名称映射
+            source_to_display = {}
+            for source in all_sources:
+                if source.startswith("upload:"):
+                    source_to_display[source] = source.replace("upload:", "")
+                elif source.startswith("http"):
+                    source_to_display[source] = source[:50] + "..." if len(source) > 50 else source
+                else:
+                    source_to_display[source] = Path(source).name
+
+            display_names = [source_to_display[s] for s in all_sources]
+
             selected = st.multiselect(
                 "选择用于 RAG 的文件",
-                options=filenames,
-                default=filenames,
+                options=display_names,
+                default=display_names,
                 help="取消选择可从 RAG 中排除"
             )
 
             # 更新选中的文件
-            filename_to_source = {Path(src).name: src for src in all_sources}
+            display_to_source = {v: k for k, v in source_to_display.items()}
             st.session_state.selected_sources = [
-                filename_to_source[name] for name in selected
+                display_to_source[name] for name in selected
             ]
         else:
             st.info("暂无文件，请先上传文档或抓取网页")
