@@ -1,6 +1,9 @@
 """RAG 检索器模块"""
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, TYPE_CHECKING
 from src.vector_store import get_vector_store
+
+if TYPE_CHECKING:
+    from src.vector_store import VectorStore
 
 
 class Retriever:
@@ -8,10 +11,10 @@ class Retriever:
 
     def __init__(
         self,
-        top_k: int = None,
-        filter_metadata: Dict[str, Any] = None,
-        vector_store=None,
-    ):
+        top_k: Optional[int] = None,
+        filter_metadata: Optional[Dict[str, Any]] = None,
+        vector_store: Optional["VectorStore"] = None,
+    ) -> None:
         """
         初始化检索器
 
@@ -22,10 +25,10 @@ class Retriever:
         """
         self.top_k = top_k
         self.filter_metadata = filter_metadata
-        self._vector_store = vector_store
+        self._vector_store: Optional["VectorStore"] = vector_store
 
     @property
-    def vector_store(self):
+    def vector_store(self) -> "VectorStore":
         """获取向量存储实例"""
         if self._vector_store is None:
             self._vector_store = get_vector_store()

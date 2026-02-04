@@ -1,7 +1,13 @@
 """Gradio Web 界面 - Book RAG"""
 import gradio as gr
+import sys
 from pathlib import Path
-from typing import List, Tuple, Optional, Dict, Any
+from typing import List, Tuple, Optional, Dict, Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.embeddings import Embeddings
+    from src.vector_store import VectorStore
+    from src.chains.llm_manager import LLMManager
 
 
 def _find_best_split_position(text: str, start: int, end: int) -> int:
@@ -69,17 +75,17 @@ def split_text(text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]
 # 全局状态
 class SessionState:
     """会话状态管理"""
-    def __init__(self):
+    def __init__(self) -> None:
         self.api_key: Optional[str] = None
         self.model: str = "deepseek"
-        self.llm_manager = None
-        self._vector_store = None
-        self._embeddings = None
+        self.llm_manager: Optional["LLMManager"] = None
+        self._vector_store: Optional["VectorStore"] = None
+        self._embeddings: Optional["Embeddings"] = None
         self.documents_loaded: bool = False
-        self.current_citations: List = []  # 当前问答的引用列表
+        self.current_citations: List[Dict[str, Any]] = []  # 当前问答的引用列表
 
     @property
-    def embeddings(self):
+    def embeddings(self) -> "Embeddings":
         """延迟加载 embeddings"""
         if self._embeddings is None:
             from src.embeddings import get_embeddings
@@ -87,7 +93,7 @@ class SessionState:
         return self._embeddings
 
     @property
-    def vector_store(self):
+    def vector_store(self) -> "VectorStore":
         """延迟加载向量存储"""
         if self._vector_store is None:
             from src.vector_store import get_vector_store
@@ -95,7 +101,7 @@ class SessionState:
         return self._vector_store
 
 
-def get_initial_models() -> list:
+def get_initial_models() -> List[str]:
     """
     获取初始模型列表（从 OpenRouter API 动态获取免费模型）
 

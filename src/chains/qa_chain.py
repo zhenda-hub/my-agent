@@ -1,10 +1,13 @@
 """RAG 问答链模块"""
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, TYPE_CHECKING
 from dataclasses import dataclass, field
 from pathlib import Path
 from collections import defaultdict
 from src.retriever.base import Retriever
 from src.chains.llm_manager import LLMManager
+
+if TYPE_CHECKING:
+    pass
 
 
 @dataclass
@@ -51,7 +54,7 @@ class QAResult:
     sources: List[Dict[str, Any]]
     citations: List[Citation] = field(default_factory=list)
     answer_html: str = ""  # 带引用链接的 HTML
-    documents_data: List[Dict] = field(default_factory=list)  # 按文档分组的数据
+    documents_data: List[Dict[str, Any]] = field(default_factory=list)  # 按文档分组的数据
 
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
@@ -86,9 +89,9 @@ class QAChain:
 
     def __init__(
         self,
-        retriever: Retriever = None,
-        llm_manager: LLMManager = None,
-    ):
+        retriever: Optional[Retriever] = None,
+        llm_manager: Optional[LLMManager] = None,
+    ) -> None:
         """
         初始化问答链
 
@@ -96,8 +99,8 @@ class QAChain:
             retriever: 检索器实例
             llm_manager: LLM 管理器实例
         """
-        self.retriever = retriever or Retriever()
-        self.llm_manager = llm_manager
+        self.retriever: Retriever = retriever or Retriever()
+        self.llm_manager: Optional[LLMManager] = llm_manager
 
     @property
     def llm(self) -> LLMManager:
@@ -158,7 +161,7 @@ class QAChain:
             documents_data=[],  # 保持兼容性，但不再使用
         )
 
-    def _format_answer_with_citations(self, answer: str, sources: List[Dict]) -> str:
+    def _format_answer_with_citations(self, answer: str, sources: List[Dict[str, Any]]) -> str:
         """
         将检索到的 chunks 格式化后追加到答案末尾
 
