@@ -2,6 +2,45 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Git Rules
+
+**CRITICAL: 编码前必须确认分支和 worktree**
+
+开始任何编码任务之前：
+1. **确认当前分支** - Show current branch to user
+2. **确认是否使用 worktree** - Ask if user wants to use git worktree
+3. **等待用户决策** - Wait for user's choice
+4. **根据用户选择执行** - Proceed based on user's decision
+
+Example:
+```bash
+# ✅ 正确流程
+# 1. 显示当前分支
+git branch --show-current
+# 2. 询问用户
+# "当前在 main 分支，是否要创建新分支？是否使用 worktree？"
+# 3. 根据用户选择执行
+```
+
+**CRITICAL: 严禁自动 merge 代码**
+
+Before performing any `git merge` operation:
+1. **必须向用户确认** - Always get explicit user confirmation before merging
+2. **说明将要合并的分支** - Show which branches will be merged
+3. **等待用户同意** - Wait for user approval before executing
+4. **不得自动执行 merge** - Never automatically execute merge commands
+
+Example:
+```bash
+# ❌ 错误 - 不要自动执行
+git merge feature-branch
+
+# ✅ 正确 - 先确认
+# "即将合并 feature-branch 到当前分支，是否继续？"
+# 等待用户确认后再执行
+```
+
+
 ## Project Overview
 
 A RAG (Retrieval-Augmented Generation) based knowledge base Q&A system with multi-format document parsing support and citation tracking.
