@@ -2,63 +2,6 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Git Rules
-
-**CRITICAL: 编码前必须确认分支和 worktree**
-
-开始任何编码任务之前（包括退出 Plan Mode 后）：
-1. **确认当前分支** - Show current branch to user
-2. **确认是否使用 worktree** - Ask if user wants to use git worktree
-3. **等待用户决策** - Wait for user's choice
-4. **根据用户选择执行** - Proceed based on user's decision
-
-> **重要**: 退出 Plan Mode 后开始编码前，也必须遵循此流程！
-
-Example:
-```bash
-# ✅ 正确流程
-# 1. 显示当前分支
-git branch --show-current
-# 2. 询问用户
-# "当前在 main 分支，是否要创建新分支？是否使用 worktree？"
-# 3. 根据用户选择执行
-```
-
-**CRITICAL: 严禁自动 merge 代码**
-
-Before performing any `git merge` operation:
-
-**CRITICAL: 合并到 main 后停止测试服务**
-
-完成开发并合并到 main 分支后：
-1. **停止所有测试服务** - 停止在开发过程中启动的 Gradio、Streamlit 等服务
-2. **清理端口占用** - 确保端口（如 7860、7861、8501）没有被占用
-3. **验证环境清洁** - 确认没有遗留的进程
-
-Example:
-```bash
-# 查找并停止占用端口的进程
-lsof -ti:7860 | xargs kill -9  # Gradio 默认端口
-lsof -ti:8501 | xargs kill -9  # Streamlit 默认端口
-```
-
-Before performing any `git merge` operation:
-1. **必须向用户确认** - Always get explicit user confirmation before merging
-2. **说明将要合并的分支** - Show which branches will be merged
-3. **等待用户同意** - Wait for user approval before executing
-4. **不得自动执行 merge** - Never automatically execute merge commands
-
-Example:
-```bash
-# ❌ 错误 - 不要自动执行
-git merge feature-branch
-
-# ✅ 正确 - 先确认
-# "即将合并 feature-branch 到当前分支，是否继续？"
-# 等待用户确认后再执行
-```
-
-
 ## Project Overview
 
 A RAG (Retrieval-Augmented Generation) based knowledge base Q&A system with multi-format document parsing support and citation tracking.
@@ -198,38 +141,6 @@ Reference `.env_example` template.
 
 ## Development Workflow
 
-### Code Design Principles
-
-#### SOLID Principles
-
-- **Single Responsibility (SRP)**: Each module has one reason to change
-- **Open/Closed (OCP)**: Open for extension, closed for modification
-- **Liskov Substitution (LSP)**: Subtypes must be substitutable for base types
-- **Interface Segregation (ISP)**: Interfaces should be small and focused
-- **Dependency Inversion (DIP)**: Depend on abstractions, not concretions
-
-#### Additional Principles
-
-- **KISS (Keep It Simple, Stupid)**: Prefer simple functions over complex classes when possible
-- **YAGNI (You Aren't Gonna Need It)**: Don't add features "for the future"; build only what's required for current requirements
-- **Explicit over Implicit**: Use clear variable and function names (prefer `calculate_life_expectancy` over `calc_le`), add docstrings for non-obvious business logic
-
-#### Project-Specific Principles
-
-- **Loader Extensibility**: Adding new document formats only requires adding new loader classes, no modifications to existing code
-- **Vector Store Abstraction**: `vector_store.py` provides unified interface, allowing underlying vector database replacement
-- **LLM Replaceability**: Unified management through `LLMManager`, supports switching different LLM providers
-- **Error Handling**: External dependencies (APIs, file parsing) must have exception handling
-- **Type Annotations**: All public functions must include type annotations
-
-#### Code Style
-
-- Use `pydantic.BaseModel` for data models
-- Prefer composition over inheritance
-- Avoid global variables; use dependency injection
-- Function length ≤ 50 lines
-- File length ≤ 300 lines
-
 ### Testing Standards
 
 ```bash
@@ -253,37 +164,6 @@ tests/
 ├── test_chains/       # Q&A chain tests
 ├── test_retriever/    # Retriever tests
 └── fixtures/          # Test data
-```
-
-### Commit Convention
-
-Use Conventional Commits:
-
-```
-<type>(<scope>): <subject>
-
-<body>
-
-<footer>
-```
-
-**Types**:
-- `feat`: New feature
-- `fix`: Bug fix
-- `refactor`: Refactoring
-- `test`: Add tests
-- `docs`: Documentation update
-- `chore`: Build/tooling changes
-
-**Example**:
-```
-feat(loaders): Add TXT document loader support
-
-- Add TextLoader class
-- Support automatic encoding detection
-- Add unit tests
-
-Closes #123
 ```
 
 ## Development Notes
