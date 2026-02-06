@@ -3,55 +3,10 @@
 import argparse
 from pathlib import Path
 from typing import List
-from src.config import config
+from src.chunking.splitter import get_text_splitter
 from src.loaders import get_loader
 from src.loaders.base import Document
 from src.vector_store import get_vector_store
-
-
-def split_text(text: str, chunk_size: int = None, overlap: int = None) -> List[str]:
-    """
-    将文本切分成小块
-
-    Args:
-        text: 输入文本
-        chunk_size: 块大小（字符数）
-        overlap: 重叠字符数
-
-    Returns:
-        切分后的文本块列表
-    """
-    chunk_size = chunk_size or config.CHUNK_SIZE
-    overlap = overlap or config.CHUNK_OVERLAP
-
-    if len(text) <= chunk_size:
-        return [text]
-
-    chunks = []
-    start = 0
-
-    while start < len(text):
-        end = start + chunk_size
-
-        # 尝试在句号、换行符等位置切分
-        if end < len(text):
-            # 寻找最近的句号
-            period_pos = text.rfind("。", start, end)
-            exclamation_pos = text.rfind("！", start, end)
-            question_pos = text.rfind("？", start, end)
-            newline_pos = text.rfind("\n", start, end)
-
-            best_pos = max(period_pos, exclamation_pos, question_pos, newline_pos)
-            if best_pos > start + chunk_size // 2:
-                end = best_pos + 1
-
-        chunk = text[start:end].strip()
-        if chunk:
-            chunks.append(chunk)
-
-        start = end - overlap if end < len(text) else end
-
-    return chunks
 
 
 def split_documents(documents: List[Document]) -> List[Document]:
@@ -67,7 +22,7 @@ def split_documents(documents: List[Document]) -> List[Document]:
     chunked_docs = []
 
     for doc in documents:
-        chunks = split_text(doc.content)
+        chunks = get_text_splitter().split_text(doc.content)
 
         for i, chunk in enumerate(chunks):
             chunked_doc = Document(

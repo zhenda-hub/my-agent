@@ -2,7 +2,7 @@
 import pytest
 from pathlib import Path
 from src.loaders.txt_loader import TXTLoader
-from src.web.app import split_text
+from src.chunking.splitter import get_text_splitter
 
 
 class TestTXTLoader:
@@ -39,7 +39,7 @@ class TestTXTLoader:
         assert documents[0].metadata["char_count"] == len(content)
 
         # 验证 split_text 能正确切分
-        chunks = split_text(documents[0].content, chunk_size=500, overlap=50)
+        chunks = get_text_splitter(chunk_size=500, chunk_overlap=50).split_text(documents[0].content)
         assert len(chunks) > 1  # 长文本应该被切分成多个块
         # 验证内容完整性（所有块拼接后应该接近原长度）
         total_chunk_length = sum(len(chunk) for chunk in chunks)
@@ -105,7 +105,7 @@ class TestTXTWithRAGFlow:
         documents = loader.load(str(test_file))
 
         # 短文本应该只有一个 chunk
-        chunks = split_text(documents[0].content, chunk_size=500, overlap=50)
+        chunks = get_text_splitter(chunk_size=500, chunk_overlap=50).split_text(documents[0].content)
         assert len(chunks) == 1
         assert content in chunks[0]
 
@@ -133,7 +133,7 @@ class TestTXTWithRAGFlow:
         assert len(documents) == 1
 
         # 验证长文本被正确切分
-        chunks = split_text(documents[0].content, chunk_size=500, overlap=50)
+        chunks = get_text_splitter(chunk_size=500, chunk_overlap=50).split_text(documents[0].content)
         assert len(chunks) >= 5  # 应该有多个 chunk
 
         # 验证每个 chunk 的大小合理

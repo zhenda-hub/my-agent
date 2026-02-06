@@ -7,36 +7,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from src.vector_store import VectorStore
 
-
-def split_text(text: str, chunk_size: int = 500, overlap: int = 50) -> list[str]:
-    """将文本切分成小块"""
-    if len(text) <= chunk_size:
-        return [text]
-
-    chunks = []
-    start = 0
-
-    while start < len(text):
-        end = start + chunk_size
-
-        # 尝试在句号、换行符等位置切分
-        if end < len(text):
-            period_pos = text.rfind("。", start, end)
-            exclamation_pos = text.rfind("！", start, end)
-            question_pos = text.rfind("？", start, end)
-            newline_pos = text.rfind("\n", start, end)
-
-            best_pos = max(period_pos, exclamation_pos, question_pos, newline_pos)
-            if best_pos > start + chunk_size // 2:
-                end = best_pos + 1
-
-        chunk = text[start:end].strip()
-        if chunk:
-            chunks.append(chunk)
-
-        start = end - overlap if end < len(text) else end
-
-    return chunks
+from src.chunking.splitter import get_text_splitter
 
 
 def render_document_panel(vector_store: "VectorStore") -> None:
@@ -85,7 +56,7 @@ def render_document_panel(vector_store: "VectorStore") -> None:
                         # 切分文档
                         chunked_docs = []
                         for doc in documents:
-                            chunks = split_text(doc.content)
+                            chunks = get_text_splitter().split_text(doc.content)
                             for j, chunk in enumerate(chunks):
                                 chunked_doc = Document(
                                     content=chunk,
@@ -150,7 +121,7 @@ def render_web_scraping(vector_store: "VectorStore") -> None:
                         # 切分文档
                         chunked_docs = []
                         for doc in documents:
-                            chunks = split_text(doc.content)
+                            chunks = get_text_splitter().split_text(doc.content)
                             for i, chunk in enumerate(chunks):
                                 chunked_doc = Document(
                                     content=chunk,

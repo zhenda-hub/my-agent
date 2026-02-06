@@ -32,10 +32,6 @@ class Config:
     CHROMA_PERSIST_DIR: str = str(CHROMA_DIR)
     CHROMA_COLLECTION_NAME: str = os.getenv("CHROMA_COLLECTION_NAME", "knowledge_base")
 
-    # 文档切片
-    CHUNK_SIZE: int = int(os.getenv("CHUNK_SIZE", "500"))
-    CHUNK_OVERLAP: int = int(os.getenv("CHUNK_OVERLAP", "50"))
-
     # 检索
     TOP_K_RETRIEVALS: int = int(os.getenv("TOP_K_RETRIEVALS", "4"))
 

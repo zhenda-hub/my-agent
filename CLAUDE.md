@@ -6,11 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **CRITICAL: 编码前必须确认分支和 worktree**
 
-开始任何编码任务之前：
+开始任何编码任务之前（包括退出 Plan Mode 后）：
 1. **确认当前分支** - Show current branch to user
 2. **确认是否使用 worktree** - Ask if user wants to use git worktree
 3. **等待用户决策** - Wait for user's choice
 4. **根据用户选择执行** - Proceed based on user's decision
+
+> **重要**: 退出 Plan Mode 后开始编码前，也必须遵循此流程！
 
 Example:
 ```bash
@@ -23,6 +25,22 @@ git branch --show-current
 ```
 
 **CRITICAL: 严禁自动 merge 代码**
+
+Before performing any `git merge` operation:
+
+**CRITICAL: 合并到 main 后停止测试服务**
+
+完成开发并合并到 main 分支后：
+1. **停止所有测试服务** - 停止在开发过程中启动的 Gradio、Streamlit 等服务
+2. **清理端口占用** - 确保端口（如 7860、7861、8501）没有被占用
+3. **验证环境清洁** - 确认没有遗留的进程
+
+Example:
+```bash
+# 查找并停止占用端口的进程
+lsof -ti:7860 | xargs kill -9  # Gradio 默认端口
+lsof -ti:8501 | xargs kill -9  # Streamlit 默认端口
+```
 
 Before performing any `git merge` operation:
 1. **必须向用户确认** - Always get explicit user confirmation before merging
