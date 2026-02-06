@@ -1,19 +1,5 @@
 # 待办事项
 
-## 核心功能 ✅
-
-- [x] 更新 pyproject.toml 添加新依赖
-- [x] 创建目录结构
-- [x] 实现配置管理 (config.py)
-- [x] 实现 Embedding 封装 (embeddings.py)
-- [x] 实现文档加载器 (loaders/)
-- [x] 实现文档切片逻辑
-- [x] 实现向量存储 (vector_store.py)
-- [x] 创建文档摄入脚本 (ingest.py)
-- [x] 实现 RAG 检索器 (retriever/base.py)
-- [x] 实现问答链 (chains/qa_chain.py)
-- [x] 支持引用溯源
-- [x] 实现 Gradio Web 界面 (web/app.py)
 
 ## 优化项
 
@@ -23,12 +9,6 @@
   - [ ] Embedding → SentenceTransformerEmbeddings
   - [ ] 向量存储 → Chroma.from_documents
   - [ ] 问答链 → create_retrieval_chain
-
-## 测试
-
-- [ ] 编写单元测试
-- [ ] 测试文档摄入流程
-- [ ] 测试问答接口
 
 ## 其他
 
@@ -64,3 +44,9 @@
 
 
   
+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
+
+
+
+ui：apikey的输入改为非必填，默认值从环境变量获取。模型的输入改为非必填,默认值从环境变量获取
+ui丑陋
