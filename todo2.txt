@@ -2,14 +2,7 @@ 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
 
 
 
-# 合并代码前，需要用户确认
-
-
 
 ui：apikey的输入改为非必填，默认值从环境变量获取。模型的输入改为非必填,默认值从环境变量获取
 ui丑陋
 
-
-
-
-split_text() 负责 chunk_size=500, overlap=50 的切分
