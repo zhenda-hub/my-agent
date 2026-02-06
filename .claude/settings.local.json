@@ -35,7 +35,10 @@
       "Bash(taskkill:*)",
       "Bash(xargs:*)",
       "Bash(set:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(wc:*)",
+      "Bash(find:*)",
+      "Bash(openspec:*)"
     ]
   }
 }
