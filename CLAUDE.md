@@ -180,41 +180,6 @@ Reference `.env_example` template.
 
 ## Development Workflow
 
-### Branch Management - Worktree
-
-Before coding, use `git worktree` to create an independent working directory:
-
-```bash
-# Create new worktree branch
-git worktree add ../book-rag-<feature-name> -b feature/<feature-name>
-
-# Enter worktree directory
-cd ../book-rag-<feature-name>
-
-# After development, remove worktree
-git worktree remove ../book-rag-<feature-name>
-```
-
-**Naming conventions**:
-- Feature branches: `feature/xxx`
-- Fix branches: `fix/xxx`
-- Refactor branches: `refactor/xxx`
-
-### TDD Development Process
-
-Follow Test-Driven Development (TDD):
-
-1. **Red**: Write failing tests first
-   ```bash
-   # Create test file
-   # tests/test_<module>.py
-   uv run pytest tests/test_<module>.py -v  # Verify test fails
-   ```
-
-2. **Green**: Write minimal code to make tests pass
-
-3. **Refactor**: Refactor code while keeping tests green
-
 ### Code Design Principles
 
 #### SOLID Principles
